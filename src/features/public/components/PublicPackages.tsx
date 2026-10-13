@@ -591,6 +591,16 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                 <style>{`
                 .template-wrapper { background-color: var(--public-bg); color: var(--public-text-primary); }
 
+                .template-wrapper .package-category-title::after {
+                    content: "";
+                    display: block;
+                    width: 2rem;
+                    height: 2px;
+                    margin-top: 0.4rem;
+                    border-radius: 9999px;
+                    background-color: var(--color-accent);
+                }
+
                 /* Cover image: rounded top corners matching card */
                 .template-wrapper .package-card-cover {
                     border-radius: 1rem 1rem 0 0;
@@ -625,8 +635,19 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     }
                     #package-booking-form .package-addon-option {
                         flex-wrap: nowrap !important;
-                        font-size: 0.9rem !important;
-                        line-height: 1.4 !important;
+                        font-size: 0.8rem !important;
+                        line-height: 1.35 !important;
+                    }
+                    #package-booking-form .package-addon-option > span {
+                        min-width: 0 !important;
+                        flex: 1 1 0% !important;
+                    }
+                    #package-booking-form .package-addon-option > div {
+                        flex-shrink: 0 !important;
+                        gap: 0.5rem !important;
+                    }
+                    #package-booking-form .package-addon-option > div > span {
+                        white-space: nowrap !important;
                     }
                     #package-booking-form > .grid {
                         width: 100% !important;
@@ -641,16 +662,10 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         border-radius: 0 !important;
                         box-shadow: none !important;
                     }
-                    #package-booking-form .booking-options-section {
-                        padding: 1rem !important;
-                        background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface)) !important;
-                        border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent) !important;
-                        border-radius: 1rem !important;
-                        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 5%, transparent) !important;
-                    }
-                    #package-booking-form .booking-options-header {
-                        padding-bottom: 0.75rem;
-                        border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+                    #package-booking-form .booking-options-addon-section {
+                        margin-top: 1rem !important;
+                        padding-top: 0.75rem !important;
+                        border-top: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent) !important;
                     }
                     #package-booking-form input.input-field:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
                     #package-booking-form select.input-field {
@@ -989,8 +1004,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             )}
                             {Object.entries(packagesByCategory as Record<string, Package[]>).map(([category, pkgs]) => (
                                 <div key={category} className="space-y-8">
-                                    <div>
-                                        <h3 className="package-category-title text-2xl md:text-3xl font-extrabold text-brand-text-light">{category}</h3>
+                                    <div className="rounded-lg border border-brand-border/70 bg-brand-surface p-3 sm:p-4">
+                                        <h3 className="package-category-title text-2xl md:text-3xl font-extrabold text-brand-accent">{category}</h3>
                                         <p className="package-category-description text-brand-text-secondary mt-2 max-w-2xl text-sm md:text-base leading-relaxed">
                                             {categoryDescriptions[category] || `Berbagai pilihan Package untuk kebutuhan ${category.toLowerCase()} Anda.`}
                                         </p>
@@ -1359,18 +1374,13 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             </div>
 
                             {/* Column 2: Optional Packages, Add-ons, Promo, Payment */}
-                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm booking-form-section booking-options-section">
-                                <div className="space-y-1 booking-options-header">
-                                    <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
-                                        Paket Tambahan & Add-On
-                                    </h4>
-                                    <p className="text-xs text-brand-text-secondary">Pilih tambahan layanan jika diperlukan.</p>
-                                </div>
-
+                            <div className="space-y-4 md:space-y-6 booking-form-section">
                                 {visiblePackages.filter(p => p.id !== bookingModal.pkg?.id).length > 0 && (
                                     <div className="space-y-3">
-                                        <label className="text-xs font-bold text-brand-text-light">Paket Tambahan (Opsional)</label>
+                                        <h4 className="flex items-center gap-2 text-xs font-bold text-brand-text-light">
+                                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-accent md:hidden" />
+                                            Paket Tambahan (Opsional)
+                                        </h4>
                                         <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
                                             {visiblePackages
                                                 .filter(p => p.id !== bookingModal.pkg?.id)
@@ -1472,13 +1482,14 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                 )}
 
                                 {visibleAddOns.length > 0 && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-brand-text-light">
+                                    <div className="booking-options-addon-section space-y-2 border-t border-brand-accent/25 pt-3 md:border-t-0 md:pt-0">
+                                        <h4 className="flex items-center gap-2 text-xs font-bold text-brand-text-light">
+                                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-accent md:hidden" />
                                             Add-On Lainnya {selectedRegion ? `(Wilayah ${selectedRegion.toUpperCase()})` : ''}
-                                        </label>
-                                        <div className="p-3 border border-brand-border bg-brand-bg/40 rounded-2xl space-y-2 max-h-[600px] overflow-y-auto">
+                                        </h4>
+                                        <div className="max-h-[600px] overflow-y-auto divide-y divide-brand-border/70">
                                             {visibleAddOns.map(addon => (
-                                                <label key={addon.id} className="package-addon-option flex items-center justify-between p-2 rounded-xl hover:bg-brand-surface cursor-pointer text-xs transition-colors">
+                                                <label key={addon.id} className="package-addon-option flex items-center justify-between px-2 py-2 hover:bg-brand-surface cursor-pointer text-xs transition-colors">
                                                     <span className="font-medium text-brand-text-primary">{addon.name}</span>
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-semibold text-brand-text-secondary">{formatCurrency(addon.price)}</span>
