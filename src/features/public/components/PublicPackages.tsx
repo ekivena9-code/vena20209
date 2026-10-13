@@ -718,10 +718,11 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     .template-wrapper .package-category-title {
                         font-size: 1.5rem !important;
                         line-height: 1.25 !important;
+                        overflow-wrap: anywhere;
                     }
                     .template-wrapper .package-category-description {
-                        font-size: 0.95rem !important;
-                        line-height: 1.55 !important;
+                        font-size: 0.875rem !important;
+                        line-height: 1.5 !important;
                     }
                     .template-wrapper .package-card-title { font-size: 1.05rem !important; line-height: 1.35 !important; }
                     .template-wrapper .package-desc-text { font-size: 0.82rem !important; line-height: 1.5 !important; }
@@ -969,7 +970,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
 
 
                     <div className="grid lg:grid-cols-3 gap-8 md:gap-10 items-start">
-                        <section className="lg:col-span-2 space-y-16">
+                        <section className="lg:col-span-2 min-w-0 space-y-16">
                             {Object.keys(packagesByCategory).length === 0 && (
                                 <div className="text-center py-20 bg-brand-surface rounded-3xl border border-brand-border p-8 shadow-sm">
                                     <MapPin className="w-12 h-12 mx-auto text-brand-text-secondary mb-3 opacity-40" />
@@ -1067,7 +1068,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         </section>
 
                         {visibleAddOns.length > 0 && (
-                            <aside className="lg:col-span-1 lg:sticky lg:top-8 widget-animate" style={{ animationDelay: '500ms' }}>
+                            <aside className="lg:col-span-1 min-w-0 lg:sticky lg:top-8 widget-animate" style={{ animationDelay: '500ms' }}>
                                 <div className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border">
                                     <h3 className="text-lg md:text-xl font-bold text-brand-text-light p-4 md:p-6">
                                         Tambahan Opsional {selectedRegion ? `(${selectedRegion.toUpperCase()})` : ''}
