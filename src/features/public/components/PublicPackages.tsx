@@ -623,6 +623,11 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         max-width: 100% !important;
                         padding: 0 !important;
                     }
+                    #package-booking-form .package-addon-option {
+                        flex-wrap: nowrap !important;
+                        font-size: 0.9rem !important;
+                        line-height: 1.4 !important;
+                    }
                     #package-booking-form > .grid {
                         width: 100% !important;
                         gap: 1.5rem !important;
@@ -635,6 +640,17 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         border: 0 !important;
                         border-radius: 0 !important;
                         box-shadow: none !important;
+                    }
+                    #package-booking-form .booking-options-section {
+                        padding: 1rem !important;
+                        background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface)) !important;
+                        border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent) !important;
+                        border-radius: 1rem !important;
+                        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 5%, transparent) !important;
+                    }
+                    #package-booking-form .booking-options-header {
+                        padding-bottom: 0.75rem;
+                        border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
                     }
                     #package-booking-form input.input-field:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
                     #package-booking-form select.input-field {
@@ -699,6 +715,14 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         line-height: 1.5 !important;
                     }
                     .template-wrapper .package-card-cover { height: 160px !important; }
+                    .template-wrapper .package-category-title {
+                        font-size: 1.5rem !important;
+                        line-height: 1.25 !important;
+                    }
+                    .template-wrapper .package-category-description {
+                        font-size: 0.95rem !important;
+                        line-height: 1.55 !important;
+                    }
                     .template-wrapper .package-card-title { font-size: 1.05rem !important; line-height: 1.35 !important; }
                     .template-wrapper .package-desc-text { font-size: 0.82rem !important; line-height: 1.5 !important; }
                     .template-wrapper .package-duration-row {
@@ -965,8 +989,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             {Object.entries(packagesByCategory as Record<string, Package[]>).map(([category, pkgs]) => (
                                 <div key={category} className="space-y-8">
                                     <div>
-                                        <h3 className="text-2xl md:text-3xl font-extrabold text-brand-text-light">{category}</h3>
-                                        <p className="text-brand-text-secondary mt-2 max-w-2xl text-sm md:text-base leading-relaxed">
+                                        <h3 className="package-category-title text-2xl md:text-3xl font-extrabold text-brand-text-light">{category}</h3>
+                                        <p className="package-category-description text-brand-text-secondary mt-2 max-w-2xl text-sm md:text-base leading-relaxed">
                                             {categoryDescriptions[category] || `Berbagai pilihan Package untuk kebutuhan ${category.toLowerCase()} Anda.`}
                                         </p>
                                     </div>
@@ -1334,8 +1358,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             </div>
 
                             {/* Column 2: Optional Packages, Add-ons, Promo, Payment */}
-                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm booking-form-section">
-                                <div className="space-y-1">
+                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm booking-form-section booking-options-section">
+                                <div className="space-y-1 booking-options-header">
                                     <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
                                         Paket Tambahan & Add-On
@@ -1453,7 +1477,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                         </label>
                                         <div className="p-3 border border-brand-border bg-brand-bg/40 rounded-2xl space-y-2 max-h-[600px] overflow-y-auto">
                                             {visibleAddOns.map(addon => (
-                                                <label key={addon.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-brand-surface cursor-pointer text-xs transition-colors">
+                                                <label key={addon.id} className="package-addon-option flex items-center justify-between p-2 rounded-xl hover:bg-brand-surface cursor-pointer text-xs transition-colors">
                                                     <span className="font-medium text-brand-text-primary">{addon.name}</span>
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-semibold text-brand-text-secondary">{formatCurrency(addon.price)}</span>
