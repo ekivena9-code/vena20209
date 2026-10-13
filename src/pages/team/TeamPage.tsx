@@ -24,7 +24,7 @@
  *     └─ Modal (slip, signature, QR, info)
  */
 
-import React, { lazy, Suspense, useState } from 'react';
+import React, { useState } from 'react';
 import {
   TeamMember,
   TeamProjectPayment,
@@ -41,7 +41,6 @@ import {
 import Modal from '../../shared/ui/Modal';
 import SignaturePad from '../../shared/ui/SignaturePad';
 import QrCodeDisplay from '../../shared/ui/QrCodeDisplay';
-const PDFViewer = lazy(() => import('../../shared/ui/PDFViewer'));
 
 // Feature components
 import TeamPageHeader from '../../features/team/components/TeamPageHeader';
@@ -331,6 +330,8 @@ export const Freelancers: React.FC<FreelancersProps> = ({
             payments.setExpandedRecordId((prev) => (prev === id ? null : id))
           }
           onViewSlip={payments.setPaymentSlipToView}
+          onUpdatePaymentRecord={payments.handleUpdatePaymentRecord}
+          onDeletePaymentRecord={payments.handleDeletePaymentRecord}
           newNote={members.newNote}
           setNewNote={members.setNewNote}
           newNoteType={members.newNoteType}
@@ -355,41 +356,14 @@ export const Freelancers: React.FC<FreelancersProps> = ({
 
       {/* Payment slip viewer */}
       {payments.paymentSlipToView && (
-        <React.Fragment>
-          {/* Hidden Document for PDF Generation - Moved outside Modal to prevent clipping by overflow containers */}
-          <div style={{ position: 'fixed', left: 0, top: 0, zIndex: -9999, opacity: 0, pointerEvents: 'none', width: '800px' }}>
-            {payments.renderPaymentSlipBody(payments.paymentSlipToView)}
-          </div>
-
-          <Modal
+        <Modal
             isOpen={!!payments.paymentSlipToView}
             onClose={() => payments.setPaymentSlipToView(null)}
             title={`Slip Pembayaran: ${payments.paymentSlipToView.recordNumber}`}
             size="4xl"
           >
-
-
-          {/* PDF Viewer Canvas with Fit-Width */}
-          <div className="bg-slate-50 border border-brand-border rounded-xl overflow-hidden min-h-[450px]">
-            {payments.isGeneratingPdf && !payments.pdfBlob ? (
-              <div className="flex flex-col items-center justify-center py-24 min-h-[450px]">
-                <div className="animate-spin border-4 border-brand-accent/20 border-t-brand-accent rounded-full w-12 h-12 mb-4"></div>
-                <p className="text-sm font-medium text-brand-text-secondary">Menyiapkan pratinjau PDF slip gaji...</p>
-              </div>
-            ) : (
-              payments.pdfBlob && (
-                <Suspense fallback={<div className="py-6 text-center text-sm text-brand-text-secondary">Memuat pratinjau PDF...</div>}>
-                  <PDFViewer pdfBlob={payments.pdfBlob} className="max-h-[65vh]" />
-                </Suspense>
-              )
-            )}
-
-            {!payments.pdfBlob && !payments.isGeneratingPdf && (
-              <div className="flex flex-col items-center justify-center py-24 min-h-[450px] text-brand-text-secondary">
-                <div className="animate-pulse w-48 h-64 bg-slate-200 dark:bg-slate-800 rounded-xl mb-4"></div>
-                <p className="text-sm font-medium animate-pulse">Memuat pratinjau slip gaji...</p>
-              </div>
-            )}
+          <div className="bg-slate-50 border border-brand-border rounded-xl overflow-x-auto min-h-[450px] p-2 sm:p-4">
+            {payments.renderPaymentSlipBody(payments.paymentSlipToView)}
           </div>
 
           <div className="mt-5 flex justify-end items-center gap-2 non-printable border-t border-brand-border pt-4">
@@ -411,7 +385,6 @@ export const Freelancers: React.FC<FreelancersProps> = ({
             </button>
           </div>
         </Modal>
-        </React.Fragment>
       )}
 
       {/* Signature pad */}

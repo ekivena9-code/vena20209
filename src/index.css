@@ -1640,7 +1640,7 @@ body {
   }
 
   /* ── 4. BUTTONS, ICON BUTTONS & ACTIONS (Kecil 1 Tingkat Proporsional) ── */
-  button:not(.client-payment-toggle):not(.finance-add-pocket-card):not(.finance-add-account-card):not(.vendor-portfolio-card):not(.btn-box-read):not(.btn-box-edit):not(.btn-box-delete):not(.btn-box-wa):not(.btn-box-add):not(.rounded-full):not([class*="rounded-full"]):not(.bottom-nav button):not([class*="w-7"]):not([class*="w-8"]):not([class*="h-7"]):not([class*="h-8"]):not([class*="w-6"]):not([class*="h-6"]),
+  button:not(.client-payment-toggle):not(.finance-add-pocket-card):not(.finance-add-account-card):not(.vendor-portfolio-card):not(.btn-box-read):not(.btn-box-edit):not(.btn-box-delete):not(.btn-box-wa):not(.btn-box-add):not(.package-booking-button):not(.rounded-full):not([class*="rounded-full"]):not(.bottom-nav button):not([class*="w-7"]):not([class*="w-8"]):not([class*="h-7"]):not([class*="h-8"]):not([class*="w-6"]):not([class*="h-6"]),
   input[type="button"],
   input[type="submit"],
   [role="button"]:not(.bottom-nav *):not(.calendar-event-entry),
@@ -1821,6 +1821,29 @@ body {
     max-width: 10px !important;
     max-height: 10px !important;
     flex-shrink: 0 !important;
+  }
+
+  .app-modal-dialog .btn-box-wa.share-wa-labeled-button {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 40px !important;
+    max-height: none !important;
+    padding: 0.625rem 1rem !important;
+    gap: 0.5rem !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.8rem !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+  }
+
+  .app-modal-dialog .btn-box-wa.share-wa-labeled-button svg {
+    width: 16px !important;
+    height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
   }
 
   /* Compact circular/icon-only action buttons on mobile */
@@ -2095,6 +2118,26 @@ body {
     border-radius: 6px !important;
   }
 
+  .app-modal-dialog .package-duration-row {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    flex-wrap: nowrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .app-modal-dialog .package-duration-card {
+    min-width: 130px !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+  }
+
+  .app-modal-dialog .package-duration-price-value {
+    font-size: 0.68rem !important;
+    line-height: 1.2 !important;
+  }
+
   .app-modal-dialog .flex.items-center.gap-2.pt-1:not(.client-detail-action-group) {
     flex-direction: column !important;
     gap: 0.3rem !important;
@@ -2141,6 +2184,64 @@ body {
 
   .app-modal-dialog .text-xs {
     font-size: 0.52rem !important;
+  }
+
+  .app-modal-dialog form.form-compact .text-2xl {
+    font-size: 1.15rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-modal-dialog form.form-compact .text-xl {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-modal-dialog form.form-compact .text-lg {
+    font-size: 0.95rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .app-modal-dialog form.form-compact .text-base {
+    font-size: 0.9rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .app-modal-dialog form.form-compact .text-sm {
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .app-modal-dialog form.form-compact .text-xs {
+    font-size: 0.74rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .app-modal-dialog form.form-compact [class*="text-[11px]"],
+  .app-modal-dialog form.form-compact [class*="text-[10px]"] {
+    font-size: 0.7rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .app-modal-dialog form.form-compact [class*="text-[9px]"],
+  .app-modal-dialog form.form-compact [class*="text-[8px]"] {
+    font-size: 0.66rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-modal-dialog form.form-compact .package-duration-price-value {
+    font-size: 0.8rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-modal-dialog form.form-compact button[type="submit"],
+  .app-modal-dialog form.form-compact .button-primary,
+  .app-modal-dialog form.form-compact .button-secondary {
+    min-height: 42px !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0.6rem 1rem !important;
+    font-size: 0.86rem !important;
+    line-height: 1.25 !important;
   }
 
   .app-modal-dialog .team-assignment-name {
@@ -2526,5 +2627,57 @@ select.bg-zinc-800 {
 
   .app-modal-dialog:has(.freelancer-project-detail) .modal-content-area {
     padding: 1rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .public-lead-form-page h1 {
+    font-size: 1.65rem !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
+  }
+
+  .public-lead-form-page [class~="text-[10px]"] {
+    font-size: 0.8rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .public-lead-form-page [class~="text-[11px]"] {
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .public-lead-form-page .text-xs {
+    font-size: 0.8rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .public-lead-form-page .text-sm {
+    font-size: 0.95rem !important;
+    line-height: 1.35 !important;
+  }
+
+  #root .public-lead-form-page form input:not([type="checkbox"]):not([type="radio"]),
+  #root .public-lead-form-page form select,
+  #root .public-lead-form-page form textarea {
+    min-height: 44px !important;
+    padding: 0.65rem 0.75rem !important;
+    font-size: 1rem !important;
+    line-height: 1.35 !important;
+    height: auto !important;
+    border-radius: 0.5rem !important;
+  }
+
+  #root .public-lead-form-page form textarea {
+    min-height: 5rem !important;
+  }
+
+  #root .public-lead-form-page form button[type="submit"] {
+    min-height: 44px !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0.7rem 1rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.25 !important;
   }
 }

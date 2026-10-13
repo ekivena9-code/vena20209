@@ -892,8 +892,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 <SectionHeading title="Jadwal Meeting & Hasil" />
                 <div className="grid grid-cols-1 gap-3">
                   {([
-                    { kind: 'regular', title: 'Meeting Pengantin', description: 'Atur pertemuan langsung dengan pengantin.', icon: CalendarClock },
-                    { kind: 'zoom', title: 'Zoom Meeting', description: 'Atur meeting online dan simpan tautan Zoom.', icon: Video },
+                    { kind: 'regular', title: 'Meeting Offline', description: 'Atur pertemuan langsung dengan pengantin.', icon: CalendarClock },
+                    { kind: 'zoom', title: 'Meeting Online', description: 'Atur meeting online dan simpan tautan Zoom.', icon: Video },
                   ] as const).map(({ kind, title, description, icon: MeetingIcon }) => {
                     const draft = meetingDrafts[kind];
                     const meeting = projectMeetings.find(item => item.metadata.kind === kind);
@@ -1088,9 +1088,10 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                                 <div className="space-y-2">
                                   {members.map(assignment => {
                                     const teamMember = teamMembers.find(member => member.id === assignment.memberId);
-                                    const payment = teamProjectPayments.find(item =>
+                                    const matchingPayments = teamProjectPayments.filter(item =>
                                       item.projectId === selectedProject.id && item.teamMemberId === assignment.memberId,
                                     );
+                                    const payment = matchingPayments.find(item => item.status === 'Unpaid') ?? matchingPayments[0];
                                     const isPaid = payment?.status === 'Paid';
                                     return (
                                       <div

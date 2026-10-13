@@ -110,7 +110,7 @@ export const useClientDocumentActions = ({
         if (!documentToView || !clientForDetail) return;
 
         const phone = clientForDetail.whatsapp || clientForDetail.phone;
-        const companyName = userProfile?.companyName || 'Weddfinter';
+        const companyName = userProfile?.companyName || 'Vena Pictures';
 
         if (documentToView.type === 'invoice') {
             const proj = documentToView.project;

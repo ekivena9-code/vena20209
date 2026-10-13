@@ -83,7 +83,7 @@ export function generateProjectBriefing(project: Project, profile: Profile): Pro
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
             'BEGIN:VEVENT',
-            `UID:${project.id}@Weddfin.com`,
+            `UID:${project.id}@VenaPictures.com`,
             `DTSTAMP:${toGoogleCalendarFormat(new Date())}`,
             `DTSTART:${toGoogleCalendarFormat(startDate)}`,
             `DTEND:${toGoogleCalendarFormat(endDate)}`,

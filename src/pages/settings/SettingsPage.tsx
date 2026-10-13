@@ -1424,6 +1424,13 @@ const ChecklistTemplateSettings: React.FC<{
 
 const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, projects, packages, setPackages, users, setUsers, currentUser }) => {
     const [activeTab, setActiveTab] = useState('profile');
+    const [localProfile, setLocalProfile] = useState<Profile>(profile);
+
+    useEffect(() => {
+        if (profile) {
+            setLocalProfile(profile);
+        }
+    }, [profile]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
@@ -1626,10 +1633,8 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setProfile(prev => ({ ...prev, [name]: value }));
+        setLocalProfile(prev => ({ ...prev, [name]: value }));
     };
-
-
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1640,14 +1645,15 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
             }
             const reader = new FileReader();
             reader.onloadend = () => {
-                setProfile(prev => ({ ...prev, logoBase64: reader.result as string }));
+                const res = reader.result as string;
+                setLocalProfile(prev => ({ ...prev, logoBase64: res }));
             };
             reader.readAsDataURL(file);
         }
     };
 
     const handleRemoveLogo = () => {
-        setProfile(prev => ({ ...prev, logoBase64: '' as any }));
+        setLocalProfile(prev => ({ ...prev, logoBase64: '' as any }));
     };
 
     const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1659,14 +1665,15 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
             }
             const reader = new FileReader();
             reader.onloadend = () => {
-                setProfile(prev => ({ ...prev, signatureBase64: reader.result as string }));
+                const res = reader.result as string;
+                setLocalProfile(prev => ({ ...prev, signatureBase64: res }));
             };
             reader.readAsDataURL(file);
         }
     };
 
     const handleRemoveSignature = () => {
-        setProfile(prev => ({ ...prev, signatureBase64: '' as any }));
+        setLocalProfile(prev => ({ ...prev, signatureBase64: '' as any }));
     };
 
     const handleBackgroundUpload = async (
@@ -1689,17 +1696,18 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
         try {
             const url = await uploadGalleryImage(file);
             const nextProfile = {
-                ...profile,
+                ...localProfile,
                 publicPageConfig: {
-                    ...profile.publicPageConfig,
+                    ...localProfile.publicPageConfig,
                     backgroundImages: {
-                        ...(profile.publicPageConfig?.backgroundImages || {}),
+                        ...(localProfile.publicPageConfig?.backgroundImages || {}),
                         [key]: url,
                     },
                 },
             };
             const saved = await upsertProfile(nextProfile);
             setProfile(saved);
+            setLocalProfile(saved);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (err: any) {
@@ -1729,8 +1737,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
         setIsSaving(true);
         setSaveError('');
         try {
-            const updated = await upsertProfile(profile);
+            const updated = await upsertProfile(localProfile);
             setProfile(updated);
+            setLocalProfile(updated);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (err: any) {
@@ -1990,19 +1999,19 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                             <h3 className="text-sm md:text-lg font-semibold text-brand-text-light border-b border-gray-700/50 pb-2 md:pb-3">Informasi Publik</h3>
                             <div className="space-y-3 md:space-y-4 max-w-2xl mx-auto">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                    <div className="input-group"><input id="fullName" type="text" name="fullName" value={profile.fullName || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="fullName" className="input-label">Nama Owner</label></div>
-                                    <div className="input-group"><input id="companyName" type="text" name="companyName" value={profile.companyName || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="companyName" className="input-label">Nama Perusahaan</label></div>
-                                    <div className="input-group"><input id="email" type="email" name="email" value={profile.email || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="email" className="input-label">Email</label></div>
-                                    <div className="input-group"><input id="phone" type="tel" name="phone" value={profile.phone || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="phone" className="input-label">Telepon</label></div>
-                                    <div className="input-group"><input id="website" type="url" name="website" value={profile.website || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="website" className="input-label">Website</label></div>
+                                    <div className="input-group"><input id="fullName" type="text" name="fullName" value={localProfile.fullName || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="fullName" className="input-label">Nama Owner</label></div>
+                                    <div className="input-group"><input id="companyName" type="text" name="companyName" value={localProfile.companyName || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="companyName" className="input-label">Nama Perusahaan</label></div>
+                                    <div className="input-group"><input id="email" type="email" name="email" value={localProfile.email || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="email" className="input-label">Email</label></div>
+                                    <div className="input-group"><input id="phone" type="tel" name="phone" value={localProfile.phone || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="phone" className="input-label">Telepon</label></div>
+                                    <div className="input-group"><input id="website" type="url" name="website" value={localProfile.website || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="website" className="input-label">Website</label></div>
                                 </div>
-                                <div className="input-group"><input id="address" type="text" name="address" value={profile.address || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="address" className="input-label">Alamat</label></div>
-                                <div className="input-group"><input id="bankAccount" type="text" name="bankAccount" value={profile.bankAccount || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="bankAccount" className="input-label">Rekening Bank</label></div>
-                                <div className="input-group"><input id="authorizedSigner" type="text" name="authorizedSigner" value={profile.authorizedSigner || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="authorizedSigner" className="input-label">Nama Penanggung Jawab Tanda Tangan</label></div>
-                                <div className="input-group"><input id="idNumber" type="text" name="idNumber" value={profile.idNumber || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="idNumber" className="input-label">No. KTP Penanggung Jawab</label></div>
-                                <div className="input-group"><textarea id="bio" name="bio" value={profile.bio || ''} onChange={handleInputChange} className="input-field" placeholder=" " rows={3}></textarea><label htmlFor="bio" className="input-label">Bio Perusahaan</label></div>
+                                <div className="input-group"><input id="address" type="text" name="address" value={localProfile.address || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="address" className="input-label">Alamat</label></div>
+                                <div className="input-group"><input id="bankAccount" type="text" name="bankAccount" value={localProfile.bankAccount || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="bankAccount" className="input-label">Rekening Bank</label></div>
+                                <div className="input-group"><input id="authorizedSigner" type="text" name="authorizedSigner" value={localProfile.authorizedSigner || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="authorizedSigner" className="input-label">Nama Penanggung Jawab Tanda Tangan</label></div>
+                                <div className="input-group"><input id="idNumber" type="text" name="idNumber" value={localProfile.idNumber || ''} onChange={handleInputChange} className="input-field" placeholder=" " /><label htmlFor="idNumber" className="input-label">No. KTP Penanggung Jawab</label></div>
+                                <div className="input-group"><textarea id="bio" name="bio" value={localProfile.bio || ''} onChange={handleInputChange} className="input-field" placeholder=" " rows={3}></textarea><label htmlFor="bio" className="input-label">Bio Perusahaan</label></div>
                                 <div>
-                                    <div className="input-group"><textarea id="briefingTemplate" name="briefingTemplate" value={profile.briefingTemplate || ''} onChange={handleInputChange} className="input-field" placeholder=" " rows={3}></textarea><label htmlFor="briefingTemplate" className="input-label">Template Pesan Briefing Tim</label></div>
+                                    <div className="input-group"><textarea id="briefingTemplate" name="briefingTemplate" value={localProfile.briefingTemplate || ''} onChange={handleInputChange} className="input-field" placeholder=" " rows={3}></textarea><label htmlFor="briefingTemplate" className="input-label">Template Pesan Briefing Tim</label></div>
                                     <p className="text-xs text-brand-text-secondary mt-1">Ditambahkan di akhir pesan saat membagikan briefing Acara Pernikahan ke tim via WhatsApp.</p>
                                     <button type="button" onClick={() => setProfile(p => ({ ...p, briefingTemplate: DEFAULT_BRIEFING_TEMPLATE }))} className="text-xs text-brand-accent hover:underline mt-2">+ Gunakan contoh</button>
                                 </div>
@@ -2118,7 +2127,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                                 id="brandColor"
                                                 type="color"
                                                 name="brandColor"
-                                                value={profile.brandColor || '#3b82f6'}
+                                                value={localProfile.brandColor || '#3b82f6'}
                                                 onChange={handleInputChange}
                                                 className="w-12 h-8 md:w-16 md:h-10 p-1 bg-brand-bg border border-brand-border rounded-md cursor-pointer"
                                             />
@@ -2127,6 +2136,9 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     </div>
                                 </div>
                                 <div className="p-4 bg-brand-accent/5 rounded-xl border border-brand-accent/20">
+                                    <div className="mb-2.5 p-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700 leading-relaxed">
+                                        <span className="font-bold">Khusus Dokumen Invoice:</span> Syarat & ketentuan di bawah ini dicetak khusus pada lembar dokumen Invoice tagihan klien. Untuk syarat & ketentuan katalog pemesanan paket, dikelola di halaman <strong>Input Package → Syarat</strong>.
+                                    </div>
                                     <TemplateEditor
                                         id="termsAndConditions"
                                         label="Syarat & Ketentuan (u/ Invoice)"
@@ -2514,22 +2526,22 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="input-group">
                                 <div className="relative">
-                                    <input type={showUserPassword ? 'text' : 'password'} name="password" value={userForm.password} onChange={handleUserFormChange} className="input-field pr-11" placeholder=" " autoComplete="new-password" required={userModalMode === 'add'} />
+                                    <input id="password" type={showUserPassword ? 'text' : 'password'} name="password" value={userForm.password} onChange={handleUserFormChange} className="input-field pr-11" placeholder=" " autoComplete="new-password" required={userModalMode === 'add'} />
+                                    <label htmlFor="password" className="input-label">{userModalMode === 'add' ? 'Kata Sandi' : 'Kata Sandi Baru'}</label>
                                     <button type="button" onClick={() => setShowUserPassword(show => !show)} aria-label={showUserPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'} title={showUserPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-brand-text-secondary hover:text-brand-accent focus:outline-none focus:ring-2 focus:ring-brand-accent">
                                         {showUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <label className="input-label">{userModalMode === 'add' ? 'Kata Sandi' : 'Kata Sandi Baru'}</label>
                                 <p className="hidden sm:block text-xs text-brand-text-secondary mt-1">{userModalMode === 'add' ? 'Minimal 6 karakter' : 'Kosongkan jika tidak berubah'}</p>
                             </div>
                             <div className="input-group">
                                 <div className="relative">
-                                    <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={userForm.confirmPassword} onChange={handleUserFormChange} className="input-field pr-11" placeholder=" " autoComplete="new-password" required={!!userForm.password} />
+                                    <input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={userForm.confirmPassword} onChange={handleUserFormChange} className="input-field pr-11" placeholder=" " autoComplete="new-password" required={!!userForm.password} />
+                                    <label htmlFor="confirmPassword" className="input-label">Konfirmasi Kata Sandi</label>
                                     <button type="button" onClick={() => setShowConfirmPassword(show => !show)} aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi kata sandi' : 'Lihat konfirmasi kata sandi'} title={showConfirmPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-brand-text-secondary hover:text-brand-accent focus:outline-none focus:ring-2 focus:ring-brand-accent">
                                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <label className="input-label">Konfirmasi Kata Sandi</label>
                                 <p className="hidden sm:block text-xs text-brand-text-secondary mt-1">Ketik ulang kata sandi</p>
                             </div>
                         </div>

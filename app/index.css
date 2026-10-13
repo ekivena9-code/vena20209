@@ -22,14 +22,15 @@
 /* iOS/iPad: visually scale inputs smaller without reducing font-size (avoid auto-zoom) */
 @media (max-width: 1024px) {
 
-  .ios .form-compact.form-compact--ios-scale input.input-field,
-  .ios .form-compact.form-compact--ios-scale select.input-field,
-  .ios .form-compact.form-compact--ios-scale textarea.input-field,
-  .ios .form-compact.form-compact--ios-scale .input-with-icon input,
-  .ios .form-compact.form-compact--ios-scale input[type="date"].input-field {
-    transform: scale(0.9);
-    transform-origin: top left;
-    will-change: transform;
+  html.ios #root .form-compact.form-compact--ios-scale input.input-field,
+  html.ios #root .form-compact.form-compact--ios-scale select.input-field,
+  html.ios #root .form-compact.form-compact--ios-scale textarea.input-field,
+  html.ios #root .form-compact.form-compact--ios-scale .input-with-icon input,
+  html.ios #root .form-compact.form-compact--ios-scale input[type="date"].input-field {
+    transform: none !important;
+    transform-origin: initial !important;
+    will-change: auto !important;
+    font-size: 16px !important;
   }
 
   /* Compact variant: shrink text and numbers for the Tim / Vendor payment slip */

@@ -12,7 +12,7 @@
  * - renderPaymentSlipBody — renders PaymentSlipDocument (used in slip modal + create-payment preview)
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import React from 'react';
 import {
     TeamMember,
@@ -37,7 +37,11 @@ import {
     listTransactions as listTransactionsApi,
     updateCardBalance as updateCardBalanceApi,
 } from '../../../services/transactions';
-import { createTeamPaymentRecord } from '../../../services/teamPaymentRecords';
+import {
+    createTeamPaymentRecord,
+    deleteTeamPaymentRecord,
+    updateTeamPaymentRecord,
+} from '../../../services/teamPaymentRecords';
 import { updatePocket as updatePocketRow } from '../../../services/pockets';
 import { formatCurrency } from '../utils/teamUtils';
 import PaymentSlipDocument from '../components/PaymentSlipDocument';
@@ -92,6 +96,7 @@ export const useTeamPayments = ({
     const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
     const [paymentSourceId, setPaymentSourceId] = useState('');
     const [isInstallment, setIsInstallment] = useState(false);
+    const paymentSubmissionLock = useRef(false);
 
     // ── Slip / signature state ───────────────────────────────────────────────
     const [paymentSlipToView, setPaymentSlipToView] = useState<TeamPaymentRecord | null>(null);
@@ -153,6 +158,47 @@ export const useTeamPayments = ({
         });
     }, [teamPaymentRecords]);
 
+    const handleUpdatePaymentRecord = useCallback(async (
+        recordId: string,
+        patch: Pick<TeamPaymentRecord, 'recordNumber' | 'date'>,
+    ) => {
+        try {
+            const updatedRecord = await updateTeamPaymentRecord(recordId, patch);
+            setTeamPaymentRecords(prev => prev.map(record =>
+                record.id === recordId ? updatedRecord : record,
+            ));
+            setPaymentSlipToView(current =>
+                current?.id === recordId ? updatedRecord : current,
+            );
+            showNotification('Rincian slip pembayaran berhasil diperbarui.');
+            return true;
+        } catch (error) {
+            console.error('[useTeamPayments] Failed to update payment record:', error);
+            showNotification('Gagal memperbarui slip pembayaran. Coba lagi.');
+            return false;
+        }
+    }, [setTeamPaymentRecords, showNotification]);
+
+    const handleDeletePaymentRecord = useCallback(async (record: TeamPaymentRecord) => {
+        const confirmed = window.confirm(
+            `Hapus slip ${record.recordNumber} dari riwayat? Transaksi dan status fee acara tidak berubah.`,
+        );
+        if (!confirmed) return false;
+
+        try {
+            await deleteTeamPaymentRecord(record.id);
+            setTeamPaymentRecords(prev => prev.filter(item => item.id !== record.id));
+            setPaymentSlipToView(current => current?.id === record.id ? null : current);
+            setExpandedRecordId(current => current === record.id ? null : current);
+            showNotification('Slip pembayaran berhasil dihapus dari riwayat.');
+            return true;
+        } catch (error) {
+            console.error('[useTeamPayments] Failed to delete payment record:', error);
+            showNotification('Gagal menghapus slip pembayaran. Coba lagi.');
+            return false;
+        }
+    }, [setTeamPaymentRecords, showNotification]);
+
     // ── handleCreatePayment — pre-fill amount/source, navigate to payment tab ─
     const handleCreatePayment = useCallback(() => {
         if (!selectedMember || projectsToPay.length === 0) return;
@@ -174,189 +220,233 @@ export const useTeamPayments = ({
 
     // ── handlePay — full payment execution ──────────────────────────────────
     const handlePay = useCallback(async () => {
-        if (!selectedMember || !paymentAmount || paymentAmount <= 0 || !paymentSourceId) {
-            alert('Harap isi jumlah dan pilih sumber dana.');
-            return;
-        }
+        if (paymentSubmissionLock.current) return;
+        paymentSubmissionLock.current = true;
 
-        const actualPaidAmount = Number(paymentAmount);
-        const totalDue = selectedMemberUnpaidProjects
-            .filter(p => projectsToPay.includes(p.id))
-            .reduce((sum, p) => sum + p.fee, 0);
-
-        if (actualPaidAmount > totalDue) {
-            alert(
-                `Jumlah bayar (${formatCurrency(actualPaidAmount)}) melebihi total tagihan (${formatCurrency(totalDue)}).`,
-            );
-            return;
-        }
-
-        const newTransaction: Transaction = {
-            id: `TRN-PAY-FR-${crypto.randomUUID()}`,
-            date: new Date().toISOString().split('T')[0],
-            description: `Pembayaran Gaji Tim / Vendor: ${selectedMember.name} (${projectsToPay.length} Acara Pernikahan)`,
-            amount: paymentAmount,
-            type: TransactionType.EXPENSE,
-            category: 'Gaji Tim / Vendor',
-            method: 'Transfer Bank',
-        };
-
-        if (paymentSourceId.startsWith('card-')) {
-            const cardId = paymentSourceId.replace('card-', '');
-            const card = cards.find(c => c.id === cardId);
-            if (!card || card.balance < paymentAmount) {
-                alert(`Saldo di kartu ${card?.bankName} tidak mencukupi.`);
-                return;
-            }
-            newTransaction.cardId = cardId;
-            newTransaction.method = card.cardType === CardType.TUNAI ? 'Tunai' : 'Kartu';
-            setCards(prev =>
-                prev.map(c => (c.id === cardId ? { ...c, balance: c.balance - paymentAmount } : c)),
-            );
-            try {
-                await updateCardBalanceApi(cardId, -paymentAmount);
-            } catch (e) {
-                console.warn('[Supabase] updateCardBalance failed:', e);
-            }
-        } else {
-            // pocket
-            const pocketId = paymentSourceId.replace('pocket-', '');
-            const pocket = pockets.find(p => p.id === pocketId);
-            if (!pocket || pocket.amount < paymentAmount) {
-                alert(`Saldo di kantong ${pocket?.name} tidak mencukupi.`);
+        try {
+            if (!selectedMember || paymentAmount === '' || paymentAmount <= 0 || !paymentSourceId) {
+                alert('Harap isi jumlah dan pilih sumber dana.');
                 return;
             }
 
-            if (pocket.sourceCardId) {
-                const sourceCard = cards.find(c => c.id === pocket.sourceCardId);
-                if (!sourceCard || sourceCard.balance < paymentAmount) {
-                    alert(
-                        `Saldo di kartu sumber (${sourceCard?.bankName}) yang terhubung ke kantong ini tidak mencukupi.`,
-                    );
+            const paymentDate = new Date().toISOString().split('T')[0];
+            const selectedIds = new Set(projectsToPay);
+            const selectedProjectIds = new Set<string>();
+            const selectedPayments = teamProjectPayments
+                .filter(payment =>
+                    selectedIds.has(payment.id) &&
+                    payment.teamMemberId === selectedMember.id &&
+                    payment.status === 'Unpaid',
+                )
+                .filter(payment => {
+                    if (selectedProjectIds.has(payment.projectId)) return false;
+                    selectedProjectIds.add(payment.projectId);
+                    return true;
+                })
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            if (selectedPayments.length === 0) {
+                showNotification('Fee yang dipilih sudah lunas atau tidak ditemukan. Muat ulang daftar lalu coba lagi.');
+                return;
+            }
+
+            const actualPaidAmount = Number(paymentAmount);
+            const totalDue = selectedPayments.reduce((sum, payment) => sum + payment.fee, 0);
+            if (actualPaidAmount > totalDue) {
+                alert(
+                    `Jumlah bayar (${formatCurrency(actualPaidAmount)}) melebihi total tagihan (${formatCurrency(totalDue)}).`,
+                );
+                return;
+            }
+
+            let method = 'Transfer Bank';
+            let cardId: string | undefined;
+            let pocketId: string | undefined;
+            let selectedPocket: FinancialPocket | undefined;
+
+            if (paymentSourceId.startsWith('card-')) {
+                cardId = paymentSourceId.replace('card-', '');
+                const card = cards.find(item => item.id === cardId);
+                if (!card || card.balance < actualPaidAmount) {
+                    alert(`Saldo di kartu ${card?.bankName} tidak mencukupi.`);
                     return;
                 }
-                setCards(prev =>
-                    prev.map(c =>
-                        c.id === pocket.sourceCardId
-                            ? { ...c, balance: c.balance - paymentAmount }
-                            : c,
-                    ),
-                );
-                try {
-                    await updateCardBalanceApi(sourceCard.id, -paymentAmount);
-                } catch (e) {
-                    console.warn('[Supabase] updateCardBalance failed:', e);
+                method = card.cardType === CardType.TUNAI ? 'Tunai' : 'Kartu';
+            } else if (paymentSourceId.startsWith('pocket-')) {
+                pocketId = paymentSourceId.replace('pocket-', '');
+                selectedPocket = pockets.find(item => item.id === pocketId);
+                if (!selectedPocket || selectedPocket.amount < actualPaidAmount) {
+                    alert(`Saldo di kantong ${selectedPocket?.name} tidak mencukupi.`);
+                    return;
                 }
+                cardId = selectedPocket.sourceCardId;
+                if (cardId) {
+                    const sourceCard = cards.find(item => item.id === cardId);
+                    if (!sourceCard || sourceCard.balance < actualPaidAmount) {
+                        alert(`Saldo di kartu sumber (${sourceCard?.bankName}) yang terhubung ke kantong ini tidak mencukupi.`);
+                        return;
+                    }
+                }
+                method = 'Sistem';
+            } else {
+                alert('Pilih sumber dana yang valid.');
+                return;
             }
 
-            newTransaction.pocketId = pocketId;
-            newTransaction.cardId = pocket.sourceCardId;
-            newTransaction.method = 'Sistem';
-            setPockets(prev =>
-                prev.map(p =>
-                    p.id === pocketId ? { ...p, amount: p.amount - paymentAmount } : p,
-                ),
-            );
-        }
-
-        const newRecordPayload = {
-            recordNumber: `PAY-FR-${selectedMember.id.slice(-4)}-${Date.now()}`,
-            teamMemberId: selectedMember.id,
-            date: new Date().toISOString().split('T')[0],
-            projectPaymentIds: projectsToPay,
-            totalAmount: paymentAmount,
-        } as Omit<TeamPaymentRecord, 'id'>;
-
-        // Optimistic UI update
-        setTeamProjectPayments(prev =>
-            prev.map(p => (projectsToPay.includes(p.id) ? { ...p, status: 'Paid' } : p)),
-        );
-
-        // Persist per-project finance transactions
-        try {
             let remainingToDistribute = actualPaidAmount;
-            const selectedPayments = [...teamProjectPayments.filter(p => projectsToPay.includes(p.id))].sort(
-                (a, b) => a.date.localeCompare(b.date),
-            );
-
             const transactionsToCreate: Omit<Transaction, 'id' | 'vendorSignature'>[] = [];
             const paymentsToUpdate: TeamProjectPayment[] = [];
 
-            for (const pay of selectedPayments) {
+            for (const payment of selectedPayments) {
                 if (remainingToDistribute <= 0) break;
 
-                const payForThisProject = Math.min(pay.fee, remainingToDistribute);
-                const isFullyPaid = payForThisProject >= pay.fee;
-                remainingToDistribute -= payForThisProject;
+                const amountForProject = Math.min(payment.fee, remainingToDistribute);
+                const isFullyPaid = amountForProject >= payment.fee;
+                remainingToDistribute -= amountForProject;
 
-                const proj = projects.find(pr => pr.id === pay.projectId);
-                const tx: Omit<Transaction, 'id' | 'vendorSignature'> = {
-                    date: newTransaction.date,
-                    description: `Gaji Freelance - ${selectedMember.name}${proj ? ` (${proj.projectName})` : ''}${!isFullyPaid ? ' (Cicilan)' : ''}`,
-                    amount: payForThisProject,
+                const project = projects.find(item => item.id === payment.projectId);
+                transactionsToCreate.push({
+                    date: paymentDate,
+                    description: `Gaji Freelance - ${selectedMember.name}${project ? ` (${project.projectName})` : ''}${!isFullyPaid ? ' (Cicilan)' : ''}`,
+                    amount: amountForProject,
                     type: TransactionType.EXPENSE,
-                    projectId: pay.projectId,
+                    projectId: payment.projectId,
                     category: 'Gaji Tim / Vendor',
-                    method: newTransaction.method,
-                    pocketId: newTransaction.pocketId,
-                    cardId: newTransaction.cardId,
-                };
-                transactionsToCreate.push(tx);
+                    method,
+                    pocketId,
+                    cardId,
+                });
 
-                paymentsToUpdate.push(
-                    isFullyPaid
-                        ? { ...pay, status: 'Paid' }
-                        : { ...pay, fee: pay.fee - payForThisProject, status: 'Unpaid' },
+                const validPaymentDate = payment.date && !Number.isNaN(Date.parse(payment.date))
+                    ? payment.date
+                    : paymentDate;
+                paymentsToUpdate.push({
+                    ...payment,
+                    date: validPaymentDate,
+                    fee: isFullyPaid ? payment.fee : payment.fee - amountForProject,
+                    status: isFullyPaid ? 'Paid' : 'Unpaid',
+                });
+            }
+
+            let persistedPayments: TeamProjectPayment[];
+            try {
+                persistedPayments = await updateTeamProjectPaymentsApi(paymentsToUpdate);
+            } catch (error) {
+                console.error('[useTeamPayments] Failed to update fee status:', error);
+                showNotification('Status fee gagal disimpan. Transaksi tidak dibuat. Periksa tanggal acara lalu coba lagi.');
+                return;
+            }
+
+            const persistedById = new Map(persistedPayments.map(payment => [payment.id, payment]));
+            setTeamProjectPayments(prev => prev.map(payment => persistedById.get(payment.id) ?? payment));
+
+            try {
+                await createTransactionsApi(transactionsToCreate);
+            } catch (error) {
+                console.error('[useTeamPayments] Failed to create payment transactions:', error);
+                const rollbackPayments = selectedPayments
+                    .filter(payment => paymentsToUpdate.some(updated => updated.id === payment.id))
+                    .map(payment => ({
+                        ...payment,
+                        date: payment.date && !Number.isNaN(Date.parse(payment.date)) ? payment.date : paymentDate,
+                    }));
+                try {
+                    await updateTeamProjectPaymentsApi(rollbackPayments);
+                } catch (rollbackError) {
+                    console.error('[useTeamPayments] Failed to roll back fee status:', rollbackError);
+                }
+                const rollbackById = new Map(rollbackPayments.map(payment => [payment.id, payment]));
+                setTeamProjectPayments(prev => prev.map(payment => rollbackById.get(payment.id) ?? payment));
+                showNotification('Transaksi gagal disimpan. Status fee dikembalikan; belum ada slip pembayaran yang dibuat.');
+                return;
+            }
+
+            let balanceUpdateFailed = false;
+            if (cardId) {
+                try {
+                    await updateCardBalanceApi(cardId, -actualPaidAmount);
+                    setCards(prev => prev.map(card =>
+                        card.id === cardId ? { ...card, balance: card.balance - actualPaidAmount } : card,
+                    ));
+                } catch (error) {
+                    console.error('[useTeamPayments] Failed to update card balance:', error);
+                    balanceUpdateFailed = true;
+                }
+            }
+
+            if (selectedPocket && pocketId) {
+                try {
+                    await updatePocketRow(pocketId, { amount: selectedPocket.amount - actualPaidAmount });
+                    setPockets(prev => prev.map(pocket =>
+                        pocket.id === pocketId ? { ...pocket, amount: pocket.amount - actualPaidAmount } : pocket,
+                    ));
+                } catch (error) {
+                    console.error('[useTeamPayments] Failed to update pocket balance:', error);
+                    balanceUpdateFailed = true;
+                    if (cardId) {
+                        try {
+                            await updateCardBalanceApi(cardId, actualPaidAmount);
+                            setCards(prev => prev.map(card =>
+                                card.id === cardId ? { ...card, balance: card.balance + actualPaidAmount } : card,
+                            ));
+                        } catch (rollbackError) {
+                            console.error('[useTeamPayments] Failed to restore source card balance:', rollbackError);
+                        }
+                    }
+                }
+            }
+
+            try {
+                const freshTransactions = await listTransactionsApi();
+                setTransactions(prev => {
+                    const merged = new Map<string, Transaction>();
+                    for (const transaction of freshTransactions) merged.set(transaction.id, transaction);
+                    for (const transaction of prev) {
+                        if (!merged.has(transaction.id)) merged.set(transaction.id, transaction);
+                    }
+                    return Array.from(merged.values()).sort(
+                        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+                    );
+                });
+            } catch (error) {
+                console.warn('[useTeamPayments] Failed to refresh transactions:', error);
+            }
+
+            const newRecordPayload: Omit<TeamPaymentRecord, 'id'> = {
+                recordNumber: `PAY-FR-${selectedMember.id.slice(-4)}-${Date.now()}`,
+                teamMemberId: selectedMember.id,
+                date: paymentDate,
+                projectPaymentIds: paymentsToUpdate.map(payment => payment.id),
+                totalAmount: actualPaidAmount,
+            };
+
+            let recordSaved = false;
+            try {
+                const createdRecord = await createTeamPaymentRecord(newRecordPayload);
+                setTeamPaymentRecords(prev => [...prev, createdRecord]);
+                recordSaved = true;
+                const freshPayments = await listAllTeamPayments();
+                setTeamProjectPayments(Array.isArray(freshPayments) ? freshPayments : []);
+            } catch (error) {
+                console.error('[useTeamPayments] Failed to persist payment slip:', error);
+            }
+
+            if (!recordSaved) {
+                showNotification('Transaksi sudah tercatat, tetapi slip gagal disimpan. Jangan ulangi pembayaran ini.');
+            } else if (balanceUpdateFailed) {
+                showNotification('Pembayaran dan slip tercatat, tetapi saldo sumber dana gagal diperbarui.');
+            } else {
+                showNotification(
+                    `Pembayaran untuk ${selectedMember.name} sebesar ${formatCurrency(actualPaidAmount)} berhasil dicatat.`,
                 );
             }
 
-            if (transactionsToCreate.length > 0) {
-                await createTransactionsApi(transactionsToCreate);
-            }
-            if (paymentsToUpdate.length > 0) {
-                await updateTeamProjectPaymentsApi(paymentsToUpdate);
-            }
-
-            const freshTx = await listTransactionsApi();
-            if (Array.isArray(freshTx) && freshTx.length > 0) {
-                setTransactions(prev => {
-                    const map = new Map<string, Transaction>();
-                    for (const t of freshTx) {
-                        map.set(t.id, t);
-                    }
-                    for (const t of prev) {
-                        if (!map.has(t.id)) {
-                            map.set(t.id, t);
-                        }
-                    }
-                    return Array.from(map.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                });
-            }
-        } catch (e) {
-            console.error('[Supabase] createTransaction (per-project) failed:', e);
+            setProjectsToPay([]);
+            setPaymentAmount('');
+            setIsDetailOpen(false);
+        } finally {
+            paymentSubmissionLock.current = false;
         }
-
-        try {
-            const createdRecord = await createTeamPaymentRecord(newRecordPayload);
-            setTeamPaymentRecords(prev => {
-                const exists = prev.some(r => r.id === createdRecord.id);
-                return exists
-                    ? prev.map(r => (r.id === createdRecord.id ? createdRecord : r))
-                    : [...prev, createdRecord];
-            });
-            const freshPayments = await listAllTeamPayments();
-            setTeamProjectPayments(Array.isArray(freshPayments) ? freshPayments : []);
-        } catch (err) {
-            console.error('[Supabase] Persist payment failed:', err);
-        }
-
-        showNotification(
-            `Pembayaran untuk ${selectedMember.name} sebesar ${formatCurrency(paymentAmount)} berhasil dicatat.`,
-        );
-
-        setProjectsToPay([]);
-        setPaymentAmount('');
-        setIsDetailOpen(false);
     }, [
         selectedMember,
         paymentAmount,
@@ -474,6 +564,8 @@ export const useTeamPayments = ({
         setIsSignatureModalOpen,
         expandedRecordId,
         setExpandedRecordId,
+        handleUpdatePaymentRecord,
+        handleDeletePaymentRecord,
 
         // Derived
         selectedMemberUnpaidProjects,

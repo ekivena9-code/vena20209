@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { TeamMember, TeamProjectPayment } from '../../../types';
-import { formatCurrency } from '../utils/teamUtils';
+import { dedupeCurrentTeamPayments, formatCurrency } from '../utils/teamUtils';
 import {
     EyeIcon,
     PencilIcon,
@@ -34,6 +34,12 @@ const TeamMemberList: React.FC<TeamMemberListProps> = ({
     onEditMember,
     onDeleteMember,
 }) => {
+    const currentTeamPayments = dedupeCurrentTeamPayments(teamProjectPaymentsInDateRange);
+    const getUnpaidFee = (memberId: string) =>
+        currentTeamPayments
+            .filter(payment => payment.teamMemberId === memberId && payment.status === 'Unpaid')
+            .reduce((sum, payment) => sum + payment.fee, 0);
+
     const emptyMessage =
         groupLabel === 'team'
             ? 'Tidak ada data anggota tim yang cocok.'
@@ -52,9 +58,7 @@ const TeamMemberList: React.FC<TeamMemberListProps> = ({
             {/* Mobile cards */}
             <div className="md:hidden p-3 space-y-3 bg-[#F8FAFC]">
                 {members.map(member => {
-                    const unpaidFee = teamProjectPaymentsInDateRange
-                        .filter(p => p.teamMemberId === member.id && p.status === 'Unpaid')
-                        .reduce((sum, p) => sum + p.fee, 0);
+                    const unpaidFee = getUnpaidFee(member.id);
 
                     const categoryBadgeClass =
                         groupLabel === 'vendor'
@@ -153,9 +157,7 @@ const TeamMemberList: React.FC<TeamMemberListProps> = ({
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
                         {members.map((member, index) => {
-                            const unpaidFee = teamProjectPaymentsInDateRange
-                                .filter(p => p.teamMemberId === member.id && p.status === 'Unpaid')
-                                .reduce((sum, p) => sum + p.fee, 0);
+                            const unpaidFee = getUnpaidFee(member.id);
                             return (
                                 <tr
                                     key={member.id}

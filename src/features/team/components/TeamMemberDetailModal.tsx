@@ -10,7 +10,7 @@
  *   └─ Tab content   (scrollable)
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Modal from '../../../shared/ui/Modal';
 import FreelancerProjects from './FreelancerProjects';
 import PerformanceTab from './PerformanceTab';
@@ -24,9 +24,9 @@ import {
   FinancialPocket,
   PerformanceNoteType,
 } from '../../../types';
-import { formatCurrency, formatDate } from '../utils/teamUtils';
+import { dedupeCurrentTeamPayments, formatCurrency, formatDate } from '../utils/teamUtils';
 import { StarIcon, FileTextIcon, HistoryIcon, Share2Icon } from '../../../constants';
-import { Phone, Mail, CreditCard, ChevronDown, FileText } from 'lucide-react';
+import { Phone, Mail, CreditCard, ChevronDown, Pencil, Trash2, Save, X } from 'lucide-react';
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -53,6 +53,11 @@ interface TeamMemberDetailModalProps {
   expandedRecordId: string | null;
   onToggleExpandRecord: (id: string) => void;
   onViewSlip: (record: TeamPaymentRecord) => void;
+  onUpdatePaymentRecord: (
+    id: string,
+    patch: Pick<TeamPaymentRecord, 'recordNumber' | 'date'>,
+  ) => Promise<boolean>;
+  onDeletePaymentRecord: (record: TeamPaymentRecord) => Promise<boolean>;
   // Performance tab
   newNote: string;
   setNewNote: (note: string) => void;
@@ -135,6 +140,11 @@ const PaymentsTabContent: React.FC<{
   expandedRecordId: string | null;
   onToggleExpandRecord: (id: string) => void;
   onViewSlip: (record: TeamPaymentRecord) => void;
+  onUpdatePaymentRecord: (
+    id: string,
+    patch: Pick<TeamPaymentRecord, 'recordNumber' | 'date'>,
+  ) => Promise<boolean>;
+  onDeletePaymentRecord: (record: TeamPaymentRecord) => Promise<boolean>;
 }> = ({
   memberPaymentRecords,
   teamProjectPayments,
@@ -142,7 +152,14 @@ const PaymentsTabContent: React.FC<{
   expandedRecordId,
   onToggleExpandRecord,
   onViewSlip,
+  onUpdatePaymentRecord,
+  onDeletePaymentRecord,
 }) => {
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [draftRecordNumber, setDraftRecordNumber] = useState('');
+  const [draftDate, setDraftDate] = useState('');
+  const [isSavingRecord, setIsSavingRecord] = useState(false);
+
   if (memberPaymentRecords.length === 0) {
     return (
       <div className="flex flex-col items-center py-12 text-center">
@@ -197,6 +214,104 @@ const PaymentsTabContent: React.FC<{
             {/* Expanded detail */}
             {isExpanded && (
               <div className="px-4 pb-4 border-t border-slate-200 bg-[#F8FAFC]">
+                <div className="flex items-center justify-between gap-2 pt-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#5A6A85]">
+                    Rincian pembayaran
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingRecordId(record.id);
+                        setDraftRecordNumber(record.recordNumber);
+                        setDraftDate(record.date);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100"
+                    >
+                      <Pencil className="h-3 w-3" /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDeletePaymentRecord(record)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      <Trash2 className="h-3 w-3" /> Hapus
+                    </button>
+                  </div>
+                </div>
+
+                {editingRecordId === record.id && (
+                  <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-blue-200 bg-white p-3 sm:grid-cols-2">
+                    <label className="text-[11px] font-semibold text-[#5A6A85]">
+                      Nomor slip
+                      <input
+                        value={draftRecordNumber}
+                        onChange={(event) => setDraftRecordNumber(event.target.value)}
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-[#2A3547] outline-none focus:border-blue-400"
+                      />
+                    </label>
+                    <label className="text-[11px] font-semibold text-[#5A6A85]">
+                      Tanggal pembayaran
+                      <input
+                        type="date"
+                        value={draftDate}
+                        onChange={(event) => setDraftDate(event.target.value)}
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-[#2A3547] outline-none focus:border-blue-400"
+                      />
+                    </label>
+                    <div className="flex justify-end gap-1.5 sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingRecordId(null)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        <X className="h-3 w-3" /> Batal
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSavingRecord || !draftRecordNumber.trim() || !draftDate}
+                        onClick={async () => {
+                          setIsSavingRecord(true);
+                          const saved = await onUpdatePaymentRecord(record.id, {
+                            recordNumber: draftRecordNumber.trim(),
+                            date: draftDate,
+                          });
+                          setIsSavingRecord(false);
+                          if (saved) setEditingRecordId(null);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Save className="h-3 w-3" /> Simpan
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-3 text-[11px]">
+                  <div>
+                    <p className="text-slate-500">Nomor slip</p>
+                    <p className="mt-0.5 break-all font-semibold text-[#2A3547]">{record.recordNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Tanggal pembayaran</p>
+                    <p className="mt-0.5 font-semibold text-[#2A3547]">{formatDate(record.date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Acara terkait</p>
+                    <p className="mt-0.5 font-semibold text-[#2A3547]">{record.projectPaymentIds.length} acara</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Tanda tangan</p>
+                    <p className="mt-0.5 font-semibold text-[#2A3547]">
+                      {record.vendorSignature ? 'Sudah ditandatangani' : 'Belum ditandatangani'}
+                    </p>
+                  </div>
+                  <div className="col-span-2 border-t border-slate-100 pt-2">
+                    <p className="text-slate-500">Total pembayaran</p>
+                    <p className="mt-0.5 font-bold text-emerald-700">{formatCurrency(record.totalAmount)}</p>
+                  </div>
+                </div>
+
                 <p className="text-[10px] font-black uppercase tracking-widest text-[#5A6A85] my-3">
                   Acara yang dibayar
                 </p>
@@ -207,14 +322,24 @@ const PaymentsTabContent: React.FC<{
                     return (
                       <div
                         key={paymentId}
-                        className="flex justify-between items-center gap-3 text-sm pt-1.5 first:pt-0"
+                        className="flex justify-between items-start gap-3 text-sm pt-1.5 first:pt-0"
                       >
-                        <span className="text-[#2A3547] font-medium truncate">
-                          {project?.projectName ?? 'Acara tidak ditemukan'}
-                        </span>
-                        <span className="font-bold text-[#2A3547] shrink-0">
-                          {formatCurrency(payment?.fee ?? 0)}
-                        </span>
+                        <div className="min-w-0">
+                          <p className="break-words font-medium text-[#2A3547]">
+                            {project?.projectName ?? 'Acara tidak ditemukan'}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-500">
+                            {payment
+                              ? `${payment.role || 'Tim / Vendor'} · ${formatDate(payment.date)} · ${payment.status === 'Paid' ? 'Lunas' : 'Belum lunas'}`
+                              : 'Rincian fee acara tidak tersedia'}
+                          </p>
+                        </div>
+                        {payment && (
+                          <span className="shrink-0 text-right text-[11px] font-bold text-[#2A3547]">
+                            {payment.status === 'Paid' ? 'Fee' : 'Sisa fee'}
+                            <span className="block">{formatCurrency(payment.fee)}</span>
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -247,6 +372,8 @@ const TeamMemberDetailModal: React.FC<TeamMemberDetailModalProps> = ({
   expandedRecordId,
   onToggleExpandRecord,
   onViewSlip,
+  onUpdatePaymentRecord,
+  onDeletePaymentRecord,
   newNote,
   setNewNote,
   newNoteType,
@@ -272,20 +399,25 @@ const TeamMemberDetailModal: React.FC<TeamMemberDetailModalProps> = ({
     [teamPaymentRecords, selectedMember.id],
   );
 
+  const currentTeamPayments = useMemo(
+    () => dedupeCurrentTeamPayments(teamProjectPayments),
+    [teamProjectPayments],
+  );
+
   const totalPaidEvents = useMemo(
     () =>
-      teamProjectPayments.filter(
+      currentTeamPayments.filter(
         (p) => p.teamMemberId === selectedMember.id && p.status === 'Paid',
       ).length,
-    [teamProjectPayments, selectedMember.id],
+    [currentTeamPayments, selectedMember.id],
   );
 
   const totalEarnings = useMemo(
     () =>
-      teamProjectPayments
+      currentTeamPayments
         .filter((p) => p.teamMemberId === selectedMember.id && p.status === 'Paid')
         .reduce((sum, p) => sum + p.fee, 0),
-    [teamProjectPayments, selectedMember.id],
+    [currentTeamPayments, selectedMember.id],
   );
 
   const isProjectsActive = detailTab === 'projects' || detailTab === 'create-payment';
@@ -438,6 +570,8 @@ const TeamMemberDetailModal: React.FC<TeamMemberDetailModalProps> = ({
               expandedRecordId={expandedRecordId}
               onToggleExpandRecord={onToggleExpandRecord}
               onViewSlip={onViewSlip}
+              onUpdatePaymentRecord={onUpdatePaymentRecord}
+              onDeletePaymentRecord={onDeletePaymentRecord}
             />
           )}
 

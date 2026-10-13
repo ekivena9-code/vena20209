@@ -11,7 +11,9 @@ import {
     Box, 
     Share2, 
     MapPin, 
-    Tag 
+    Tag,
+    ChevronUp,
+    ChevronDown
 } from 'lucide-react';
 import { MobileExpandableExtra } from '../../../components/ui/MobileProgressiveDisclosure';
 
@@ -21,6 +23,11 @@ interface PackageCardProps {
     onDuplicate: (pkg: Package) => void;
     onDelete: (pkgId: string) => void;
     onShare?: (pkg: Package) => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
+    orderIndex?: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -37,6 +44,11 @@ export const PackageCard: React.FC<PackageCardProps> = ({
     onDuplicate,
     onDelete,
     onShare,
+    onMoveUp,
+    onMoveDown,
+    canMoveUp,
+    canMoveDown,
+    orderIndex,
 }) => {
     // Interactive selected duration option (if duration options exist)
     const [selectedDurationIdx, setSelectedDurationIdx] = useState<number>(() => {
@@ -90,12 +102,41 @@ export const PackageCard: React.FC<PackageCardProps> = ({
                         <span className="truncate max-w-[90px] sm:max-w-[120px]">{pkg.category || 'Umum'}</span>
                     </span>
 
-                    {pkg.region && (
-                        <span className="inline-flex items-center gap-1 text-[7px] sm:text-[9px] font-semibold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-white/95 text-[#2A3547] backdrop-blur-md shadow-sm uppercase tracking-wider">
-                            <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#5D87FF] flex-shrink-0" />
-                            <span>{pkg.region}</span>
-                        </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                        {pkg.region && (
+                            <span className="inline-flex items-center gap-1 text-[7px] sm:text-[9px] font-semibold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-white/95 text-[#2A3547] backdrop-blur-md shadow-sm uppercase tracking-wider">
+                                <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#5D87FF] flex-shrink-0" />
+                                <span>{pkg.region}</span>
+                            </span>
+                        )}
+                        {(onMoveUp || onMoveDown) && (
+                            <div className="inline-flex items-center gap-0.5 bg-white/95 backdrop-blur-md px-1.5 py-0.5 rounded-full shadow-sm border border-white/40">
+                                {orderIndex !== undefined && (
+                                    <span className="text-[9px] font-bold text-[#5A6A85] px-0.5">#{orderIndex + 1}</span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
+                                    disabled={!canMoveUp}
+                                    className="w-5 h-5 rounded-full bg-[#F4F6F9] hover:bg-[#5D87FF] text-[#5A6A85] hover:text-white flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                                    title="Pindah ke Atas"
+                                    aria-label="Pindah ke Atas"
+                                >
+                                    <ChevronUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                                    disabled={!canMoveDown}
+                                    className="w-5 h-5 rounded-full bg-[#F4F6F9] hover:bg-[#5D87FF] text-[#5A6A85] hover:text-white flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                                    title="Pindah ke Bawah"
+                                    aria-label="Pindah ke Bawah"
+                                >
+                                    <ChevronDown className="w-3 h-3" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Price display pinned on bottom-left of cover */}
@@ -177,17 +218,12 @@ export const PackageCard: React.FC<PackageCardProps> = ({
                                 Yang Didapatkan
                             </p>
                             <ul className="space-y-1">
-                                {currentDigitalItems.slice(0, 4).map((item, idx) => (
+                                {currentDigitalItems.map((item, idx) => (
                                     <li key={idx} className="text-xs text-[#2A3547] flex items-start gap-1.5 sm:gap-2">
                                         <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#13DEB9] mt-0.5 flex-shrink-0 stroke-[2.5]" />
-                                        <span className="line-clamp-1">{item}</span>
+                                        <span>{item}</span>
                                     </li>
                                 ))}
-                                {currentDigitalItems.length > 4 && (
-                                    <li className="text-[11px] font-medium text-[#5D87FF] pl-5 sm:pl-6">
-                                        +{currentDigitalItems.length - 4} item lainnya
-                                    </li>
-                                )}
                             </ul>
                         </div>
                     )}
@@ -255,17 +291,12 @@ export const PackageCard: React.FC<PackageCardProps> = ({
 
                             {currentDigitalItems.length > 0 && (
                                 <ul className="space-y-0.5">
-                                    {currentDigitalItems.slice(0, 4).map((item, idx) => (
+                                    {currentDigitalItems.map((item, idx) => (
                                         <li key={idx} className="text-[10px] text-[#2A3547] flex items-start gap-1">
                                             <Check className="w-3 h-3 text-[#13DEB9] mt-0.5 flex-shrink-0" />
-                                            <span className="line-clamp-1">{item}</span>
+                                            <span>{item}</span>
                                         </li>
                                     ))}
-                                    {currentDigitalItems.length > 4 && (
-                                        <li className="text-[10px] font-medium text-[#5D87FF] pl-4">
-                                            +{currentDigitalItems.length - 4} item lainnya
-                                        </li>
-                                    )}
                                 </ul>
                             )}
 

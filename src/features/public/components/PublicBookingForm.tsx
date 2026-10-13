@@ -132,14 +132,25 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
     }, [existingRegions]);
 
     // Filter Packages by selectedRegion (strict)
+    // Filter and sort Packages by selectedRegion and userProfile packageOrder
     const filteredPackages = useMemo(() => {
         if (!selectedRegion) return [] as Package[];
         const pks = (packages || []);
-        return pks.filter(p => {
+        const filtered = pks.filter(p => {
             const pkgRegion = p.region ? String(p.region).toLowerCase() : '';
             return pkgRegion === selectedRegion.toLowerCase();
         });
-    }, [packages, selectedRegion]);
+        const order = userProfile?.publicPageConfig?.packageOrder;
+        if (order && order.length > 0) {
+            const orderMap = new Map(order.map((id, idx) => [id, idx]));
+            return [...filtered].sort((a, b) => {
+                const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999999;
+                const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999999;
+                return idxA - idxB;
+            });
+        }
+        return filtered;
+    }, [packages, selectedRegion, userProfile?.publicPageConfig?.packageOrder]);
 
     const visiblePackageGroups = useMemo(() => {
         const groups = new Map<string, Package[]>();
@@ -147,7 +158,7 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             const category = pkg.category?.trim() || 'Lainnya';
             groups.set(category, [...(groups.get(category) || []), pkg]);
         });
-        return Array.from(groups.entries()).sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB, 'id'));
+        return Array.from(groups.entries());
     }, [filteredPackages]);
 
     // When filteredPackages changes (data loads after region set), reset packageId if current
@@ -181,14 +192,24 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
         );
     }, [filteredPackages]);
 
-    // Filter Add-Ons by selectedRegion (strict)
+    // Filter and sort Add-Ons by selectedRegion and userProfile addOnOrder
     const filteredAddOns = useMemo(() => {
         if (!selectedRegion) return [] as AddOn[];
-        return (addOns || []).filter(a => {
+        const filtered = (addOns || []).filter(a => {
             const addonRegion = a.region ? String(a.region).toLowerCase() : '';
             return addonRegion === selectedRegion.toLowerCase();
         });
-    }, [addOns, selectedRegion]);
+        const order = userProfile?.publicPageConfig?.addOnOrder;
+        if (order && order.length > 0) {
+            const orderMap = new Map(order.map((id, idx) => [id, idx]));
+            return [...filtered].sort((a, b) => {
+                const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999999;
+                const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999999;
+                return idxA - idxB;
+            });
+        }
+        return filtered;
+    }, [addOns, selectedRegion, userProfile?.publicPageConfig?.addOnOrder]);
 
     // Parse region from URL only once on mount
     useEffect(() => {
@@ -209,7 +230,8 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             const hash = window.location.hash;
             const hashQuery = hash.includes('?') ? hash.substring(hash.indexOf('?') + 1) : '';
             const urlParams = new URLSearchParams(hashQuery || window.location.search);
-            const id = urlParams.get('leadId') || urlParams.get('leadName');
+            // lid = short ID (8 char prefix of UUID), leadName = name slug fallback, leadId = legacy full UUID
+            const id = urlParams.get('lid') || urlParams.get('leadId') || urlParams.get('leadName');
             if (id) {
                 setLeadId(id);
             }
@@ -222,7 +244,12 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
     useEffect(() => {
         if (isLeadDataLoaded || !leadId || (leads?.length || 0) === 0) return;
 
-        const lead = leads.find(l => l.id === leadId || toPublicNameSlug(l.name) === leadId);
+        // Match by: short ID prefix (lid), full UUID (leadId legacy), or name slug (leadName legacy)
+        const lead = leads.find(l =>
+            l.id.startsWith(leadId) ||
+            l.id === leadId ||
+            toPublicNameSlug(l.name) === leadId
+        );
         if (lead) {
             setFormData(prev => ({
                 ...prev,
@@ -496,7 +523,11 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
             if (leadId) {
                 try {
                     const leadNote = `Dikonversi dari formulir booking. Pengantin ID: ${createdClient.id}`;
-                    const lead = leads.find(l => l.id === leadId || toPublicNameSlug(l.name) === leadId);
+                    const lead = leads.find(l =>
+                        l.id.startsWith(leadId) ||
+                        l.id === leadId ||
+                        toPublicNameSlug(l.name) === leadId
+                    );
                     if (lead) {
                         const updatedLead = await updateLeadRow(lead.id, { status: LeadStatus.CONVERTED, notes: leadNote });
                         setLeads(prev => prev.map(l => l.id === lead.id ? updatedLead : l));
@@ -1328,7 +1359,28 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
             </div>
             <Modal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} title="Syarat & Ketentuan Umum">
                 <div className="max-h-[70vh] overflow-y-auto pr-4">
-                    {formattedTerms ? (
+                    {userProfile.publicPageConfig?.packageTerms && userProfile.publicPageConfig.packageTerms.length > 0 ? (
+                        <div className="space-y-4">
+                            {userProfile.publicPageConfig.packageTerms.map((section, sIdx) => (
+                                <div key={section.id || sIdx} className="border border-brand-border/80 bg-brand-bg/40 rounded-xl p-3.5 space-y-2">
+                                    <h4 className="font-semibold text-brand-text-light text-sm flex items-center gap-2">
+                                        <span className="w-5 h-5 rounded-md bg-brand-accent/20 text-brand-accent flex items-center justify-center text-xs font-bold">
+                                            {sIdx + 1}
+                                        </span>
+                                        <span>{section.title}</span>
+                                    </h4>
+                                    <ul className="space-y-1.5 pl-7 text-xs sm:text-sm text-brand-text-secondary">
+                                        {section.items.map((item, itemIdx) => (
+                                            <li key={itemIdx} className="flex items-start gap-2">
+                                                <span className="text-emerald-500 font-bold shrink-0">✓</span>
+                                                <span className="leading-snug">{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    ) : formattedTerms ? (
                         <div>{formattedTerms}</div>
                     ) : (
                         <p className="text-brand-text-secondary text-center py-8">Syarat dan ketentuan belum diatur oleh vendor.</p>

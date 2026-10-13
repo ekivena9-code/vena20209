@@ -5,11 +5,15 @@ const TABLE = 'team_project_payments';
 
 function toRow(p: TeamProjectPayment) {
   const isUuid = (v?: string) => !!v && /^[0-9a-fA-F-]{36}$/.test(v);
+  const paymentDate = p.date?.trim();
+  if (!paymentDate || Number.isNaN(Date.parse(paymentDate))) {
+    throw new Error('Tanggal acara wajib valid sebelum fee tim disimpan.');
+  }
   const row: any = {
     project_id: p.projectId,
     team_member_name: p.teamMemberName,
     team_member_id: p.teamMemberId,
-    date: p.date,
+    date: paymentDate,
     status: p.status,
     fee: p.fee,
 
@@ -113,13 +117,13 @@ export async function upsertTeamPaymentsForProject(projectId: string, items: Tea
   // Pass 3: Match replaced member slot (e.g. Andi replaced by Budi on this project)
   // If an existing payment slot is available from a removed freelance, reuse the record ID
   for (const inc of unmatchedPass2) {
-    if (remainingExisting.length > 0) {
-      const found = remainingExisting.shift()!;
+    const reusableIndex = remainingExisting.findIndex(e => e.status !== 'Paid');
+    if (reusableIndex !== -1) {
+      const [found] = remainingExisting.splice(reusableIndex, 1);
       toSave.push({
         ...inc,
         id: found.id,
-        // Reuse the record ID and update team member details
-        status: found.status === 'Paid' ? 'Paid' : inc.status,
+        status: inc.status,
       });
     } else {
       // Completely new freelance payment record
@@ -127,8 +131,12 @@ export async function upsertTeamPaymentsForProject(projectId: string, items: Tea
     }
   }
 
-  // Pass 4: Delete remaining existing records that were not matched
-  const toDeleteIds = remainingExisting.map(e => e.id).filter(Boolean) as string[];
+  // Keep paid rows because payment slips reference their IDs as historical detail.
+  const retainedPaid = remainingExisting.filter(e => e.status === 'Paid');
+  const toDeleteIds = remainingExisting
+    .filter(e => e.status !== 'Paid')
+    .map(e => e.id)
+    .filter(Boolean) as string[];
   if (toDeleteIds.length > 0) {
     const { error: delErr } = await supabase
       .from(TABLE)
@@ -141,7 +149,7 @@ export async function upsertTeamPaymentsForProject(projectId: string, items: Tea
     }
   }
 
-  if (toSave.length === 0) return [];
+  if (toSave.length === 0) return retainedPaid;
   const rows = toSave.map(toRow);
   const { data, error: upsertErr } = await supabase
     .from(TABLE)
@@ -151,7 +159,7 @@ export async function upsertTeamPaymentsForProject(projectId: string, items: Tea
     console.error('[teamProjectPayments] Upsert error:', upsertErr);
     throw upsertErr;
   }
-  return (data || []).map(fromRow);
+  return [...(data || []).map(fromRow), ...retainedPaid];
 }
 
 export async function markTeamPaymentStatus(id: string, status: 'Paid' | 'Unpaid'): Promise<void> {

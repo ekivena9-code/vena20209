@@ -31,7 +31,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
     const [isSubmitted, setIsSubmitted] = useState(false);
 
     useEffect(() => {
-        const title = userProfile.companyName || 'Weddfin';
+        const title = userProfile.companyName || 'Vena Pictures';
         document.title = `Inquiry | ${title}`;
     }, [userProfile.companyName]);
 
@@ -95,7 +95,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
 
     const targetPhone = cleanPhoneNumber(userProfile.phone) || '628123456789';
     const waDirectUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(
-        `Halo ${userProfile.companyName || 'Weddfin'}, saya ingin konsultasi mengenai pricelist & dokumentasi acara.`
+        `Halo ${userProfile.companyName || 'Vena Pictures'}, saya ingin konsultasi mengenai pricelist & dokumentasi acara.`
     )}`;
 
     // ── SUCCESS CONFIRMATION (LIGHT THEME) ──────────────────────────────────
@@ -115,7 +115,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
                     <div className="space-y-2.5">
                         <a
                             href={`https://wa.me/${targetPhone}?text=${encodeURIComponent(
-                                `Halo ${userProfile.companyName || 'Weddfin'}, saya ${formState.name}. Saya baru saja mengisi formulir konsultasi.`
+                                `Halo ${userProfile.companyName || 'Vena Pictures'}, saya ${formState.name}. Saya baru saja mengisi formulir konsultasi.`
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -150,7 +150,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
 
     // ── MAIN MINIMAL FORM (LIGHT THEME) ───────────────────────────────────
     return (
-        <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="public-lead-form-page min-h-screen bg-stone-100 flex items-center justify-center p-4 sm:p-6 lg:p-8">
             <div className="w-full max-w-lg bg-white rounded-2xl border border-stone-200 shadow-xl overflow-hidden">
                 <div className="w-full h-32 sm:h-44 md:h-52 overflow-hidden">
                     <img
@@ -164,8 +164,8 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
                     <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-medium mb-1.5">
                         Inquiry
                     </p>
-                    <h1 className="text-2xl font-serif text-zinc-900 tracking-wider font-normal">
-                        {userProfile.companyName || 'Weddfin'}
+                    <h1 className="text-2xl text-zinc-900 tracking-wider font-normal">
+                        {userProfile.companyName || 'Vena Pictures'}
                     </h1>
                     <div className="w-10 h-px bg-stone-200 mx-auto mt-4" />
                 </div>

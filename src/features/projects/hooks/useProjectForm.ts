@@ -583,7 +583,7 @@ export function useProjectForm({
         const existingProjectPayments = teamProjectPayments.filter(p => p.projectId === projectData.id);
         const existingPaymentsByMemberId = new Map(existingProjectPayments.map(p => [p.teamMemberId, p] as const));
         const unusedExistingPayments = existingProjectPayments.filter(
-            p => !allTeamMembersOnProject.some(m => m.memberId === p.teamMemberId)
+            p => p.status !== 'Paid' && !allTeamMembersOnProject.some(m => m.memberId === p.teamMemberId)
         );
 
         const newProjectPaymentEntries: TeamProjectPayment[] = allTeamMembersOnProject.map(teamMember => {
@@ -624,7 +624,7 @@ export function useProjectForm({
             };
         });
 
-        let persistedPayments = newProjectPaymentEntries;
+        let persistedPayments = existingProjectPayments;
         try {
             persistedPayments = await upsertTeamPaymentsForProject(projectData.id, newProjectPaymentEntries);
         } catch (e) {

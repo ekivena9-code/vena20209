@@ -9,7 +9,7 @@
 
 import { useState, useMemo } from 'react';
 import { TeamMember, TeamProjectPayment, Project } from '../../../types';
-import { filterUniqueMembers } from '../utils/teamUtils';
+import { dedupeCurrentTeamPayments, filterUniqueMembers } from '../utils/teamUtils';
 
 interface UseTeamFiltersParams {
     teamMembers: TeamMember[];
@@ -41,6 +41,7 @@ export const useTeamFilters = ({
         if (!dateFrom && !dateTo) return projects;
         return projects.filter(p => {
             const d = new Date(p.date);
+            if (!p.date || Number.isNaN(d.getTime())) return false;
             d.setHours(0, 0, 0, 0);
             if (dateFrom) {
                 const from = new Date(dateFrom);
@@ -60,7 +61,9 @@ export const useTeamFilters = ({
     const teamProjectPaymentsInDateRange = useMemo(() => {
         if (!dateFrom && !dateTo) return teamProjectPayments;
         const projectIdsInRange = new Set(projectsInDateRange.map(p => p.id));
-        return teamProjectPayments.filter(p => projectIdsInRange.has(p.projectId));
+        return dedupeCurrentTeamPayments(
+            teamProjectPayments.filter(p => projectIdsInRange.has(p.projectId)),
+        );
     }, [teamProjectPayments, projectsInDateRange, dateFrom, dateTo]);
 
     // ── Member groups (team / vendor split) ──────────────────────────────────

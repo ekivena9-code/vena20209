@@ -98,7 +98,7 @@ export const ClientQrShareModals: React.FC<ClientQrShareModalsProps> = ({
                             </button>
                             <button
                                 onClick={() => {
-                                    const companyName = userProfile?.companyName || 'Weddfinter';
+                                    const companyName = userProfile?.companyName || 'Vena Pictures';
                                     const template = generatePortalWhatsAppMessage(
                                         qrModalContent.clientName || '',
                                         companyName,

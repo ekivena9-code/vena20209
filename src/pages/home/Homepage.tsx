@@ -36,14 +36,21 @@ const NavigationCard: React.FC<{ title: string; description: string; link: strin
     </div>
 );
 
+const HERO_TITLE = 'Sistem Manajemen All-in-One';
+const HERO_HIGHLIGHT = 'Vendor Photography';
+const HERO_SUBTITLE = 'Dari manajemen pengantin dan Acara Pernikahan hingga keuangan dan penjadwalan tim, Vena Pictures menyediakan semua yang Anda butuhkan untuk berkembang.';
+const HERO_CTA = 'Masuk ke Dasbor Anda';
+const HERO_IMAGE = '/assets/images/landingpage/banner-img.webp';
+const HERO_IMAGE_FALLBACK = '/assets/images/landingpage/banner-img.png';
+
 const Homepage: React.FC = () => {
     return (
         <div className="bg-brand-bg text-brand-text-primary">
             {/* Header */}
             <header className="py-4 px-6 md:px-12 flex justify-between items-center bg-brand-surface/80 backdrop-blur-sm sticky top-0 z-50 border-b border-brand-border">
                 <div className="flex items-center gap-2">
-                    <img src="/assets/images/logos/logoIcon.svg" alt="weddfin logo" className="w-8 h-8" width="32" height="32" />
-                    <span className="text-xl font-extrabold text-brand-text-light">weddfin</span>
+                    <img src="/assets/images/logos/logoIcon.svg" alt="Vena Pictures logo" className="w-8 h-8" width="32" height="32" />
+                    <span className="text-xl font-extrabold text-brand-text-light">Vena Pictures</span>
                 </div>
                 <div className="space-x-2">
                     <button type="button" onClick={() => window.location.hash = '#/login'} className="button-primary px-6 py-2 text-sm">Masuk</button>
@@ -63,19 +70,19 @@ const Homepage: React.FC = () => {
                 <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center gap-12">
                     <div className="flex-1 text-center md:text-left">
                         <h1 className="text-4xl md:text-6xl font-extrabold text-brand-text-light leading-tight">
-                            Sistem Manajemen All-in-One <br /> untuk <span className="text-brand-accent">Vendor Photography</span>
+                            {HERO_TITLE} <br /> untuk <span className="text-brand-accent">{HERO_HIGHLIGHT}</span>
                         </h1>
                         <p className="max-w-2xl mt-6 text-lg text-brand-text-secondary">
-                            Dari manajemen pengantin dan Acara Pernikahan hingga keuangan dan penjadwalan tim, weddfin menyediakan semua yang Anda butuhkan untuk berkembang.
+                            {HERO_SUBTITLE}
                         </p>
-                        <button type="button" onClick={() => window.location.hash = '#/login'} className="mt-8 button-primary text-lg px-8 py-3">Masuk ke Dasbor Anda</button>
+                        <button type="button" onClick={() => window.location.hash = '#/login'} className="mt-8 button-primary text-lg px-8 py-3">{HERO_CTA}</button>
                     </div>
 
                     <div className="flex-1 relative">
                         <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10">
                             <picture>
-                                <source srcSet="/assets/images/landingpage/banner-img.webp" type="image/webp" />
-                                <img src="/assets/images/landingpage/banner-img.png" alt="Dashboard Preview" className="w-full h-auto" width="800" height="600" loading="lazy" decoding="async" />
+                                <source srcSet={HERO_IMAGE} type="image/webp" />
+                                <img src={HERO_IMAGE_FALLBACK} alt="Dashboard Preview" className="w-full h-auto" width="800" height="600" loading="lazy" decoding="async" />
                             </picture>
                         </div>
                         {/* Decorative blob/glow */}
@@ -176,13 +183,13 @@ const Homepage: React.FC = () => {
                 <div className="max-w-5xl mx-auto">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-brand-text-light">Tutorial Video</h2>
-                        <p className="text-brand-text-secondary mt-2">Pelajari cara menggunakan weddfin dengan mudah melalui video tutorial</p>
+                        <p className="text-brand-text-secondary mt-2">Pelajari cara menggunakan Vena Pictures dengan mudah melalui video tutorial</p>
                     </div>
                     <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-brand-border">
                         <iframe
                             className="absolute inset-0 w-full h-full"
                             src="https://www.youtube.com/embed/aAH3CWTKQq8"
-                            title="weddfin Tutorial Video"
+                            title="Vena Pictures Tutorial Video"
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             referrerPolicy="strict-origin-when-cross-origin"
@@ -276,7 +283,7 @@ const Homepage: React.FC = () => {
 
             {/* Footer */}
             <footer className="py-12 px-6 text-center text-brand-text-secondary text-sm">
-                <p>&copy; {new Date().getFullYear()} weddfin. All rights reserved.</p>
+                <p>&copy; {new Date().getFullYear()} Vena Pictures. All rights reserved.</p>
             </footer>
         </div>
     );

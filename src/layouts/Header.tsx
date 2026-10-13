@@ -169,7 +169,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle, toggleSidebar, setIsSearchOp
                         />
                     )}
                     <span className="text-sm font-extrabold text-[#2A3547] tracking-tight truncate">
-                        {profile?.companyName || 'weddfin'}
+                        {profile?.companyName || 'Vena Pictures'}
                     </span>
                 </div>
 

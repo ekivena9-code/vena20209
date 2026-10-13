@@ -239,12 +239,12 @@ export function useProjectEditMode({
 
     const handleEditReplaceTeamMember = useCallback(
         (oldMemberId: string, newMember: TeamMember) => {
+            if (editFormData?.team.some(t => t.memberId === newMember.id && t.memberId !== oldMemberId)) {
+                showNotification(`${newMember.name} sudah dipilih dalam project ini.`);
+                return;
+            }
             setEditFormData(prev => {
                 if (!prev) return prev;
-                if (prev.team.some(t => t.memberId === newMember.id && t.memberId !== oldMemberId)) {
-                    showNotification(`${newMember.name} sudah dipilih dalam project ini.`);
-                    return prev;
-                }
                 return {
                     ...prev,
                     team: prev.team.map(t =>
@@ -255,7 +255,7 @@ export function useProjectEditMode({
                 };
             });
         },
-        [showNotification],
+        [editFormData, showNotification],
     );
 
     // ── Save ──────────────────────────────────────────────────────────────────
@@ -279,6 +279,14 @@ export function useProjectEditMode({
                 showNotification('Tanggal acara harus diisi.');
                 return;
             }
+        }
+
+        if (
+            editFormData.team.length > 0 &&
+            (!editFormData.date || Number.isNaN(Date.parse(editFormData.date)))
+        ) {
+            showNotification('Tanggal acara harus valid agar fee tim dan vendor tersimpan.');
+            return;
         }
 
         setIsSaving(true);
@@ -499,7 +507,7 @@ export function useProjectEditMode({
             const existingProjectPayments = teamProjectPayments.filter(p => p.projectId === projectData.id);
             const existingPaymentsByMemberId = new Map(existingProjectPayments.map(p => [p.teamMemberId, p] as const));
             const unusedExistingPayments = existingProjectPayments.filter(
-                p => !allTeamMembersOnProject.some(m => m.memberId === p.teamMemberId),
+                p => p.status !== 'Paid' && !allTeamMembersOnProject.some(m => m.memberId === p.teamMemberId),
             );
 
             const newProjectPaymentEntries = allTeamMembersOnProject.map(teamMember => {
@@ -546,7 +554,7 @@ export function useProjectEditMode({
                 };
             });
 
-            let persistedPayments: TeamProjectPayment[] = newProjectPaymentEntries as TeamProjectPayment[];
+            let persistedPayments: TeamProjectPayment[] = existingProjectPayments;
             try {
                 persistedPayments = await upsertTeamPaymentsForProject(projectData.id, newProjectPaymentEntries as TeamProjectPayment[]);
             } catch (e) {

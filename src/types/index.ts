@@ -573,6 +573,31 @@ export interface SecuritySettings {
   twoFactorEnabled: boolean;
 }
 
+export interface WorkflowItem {
+  id: string;
+  title: string;
+  timeline: string[];
+  description?: string;
+}
+
+export interface PackageTermItem {
+  id: string;
+  title: string;
+  items: string[];
+}
+
+export interface RegionPricelistPdf {
+  id: string;
+  region: string; // e.g. 'banten', 'jabodetabek', 'vendor'
+  regionLabel?: string;
+  title: string; // e.g. 'Pricelist Wilayah Banten 2025'
+  pdfUrl: string; // base64 or URL
+  fileName?: string;
+  fileSize?: string;
+  buttonLabel?: string; // Teks khusus untuk tombol download PDF di halaman publik
+  updatedAt?: string;
+}
+
 export interface PublicPageConfig {
   template: 'classic' | 'modern' | 'gallery';
   title: string;
@@ -585,7 +610,8 @@ export interface PublicPageConfig {
     portalPengantin?: string;
     leadForm?: string;
   };
-  pricelistPdfUrl?: string; // URL untuk PDF pricelist yang di-upload
+  pricelistPdfUrl?: string; // URL untuk PDF pricelist yang di-upload (legacy single)
+  regionPricelists?: RegionPricelistPdf[]; // CRUD Pricelist PDF per wilayah/daerah
   weddingWorkflow?: {
     title: string;
     timeline: string[];
@@ -594,6 +620,10 @@ export interface PublicPageConfig {
     title: string;
     timeline: string[];
   };
+  workflows?: WorkflowItem[]; // Dynamic CRUD workflows for public page & package catalog
+  packageTerms?: PackageTermItem[]; // Dynamic CRUD terms and conditions for packages
+  packageOrder?: string[]; // Ordered array of package IDs for display ordering
+  addOnOrder?: string[]; // Ordered array of add-on IDs for display ordering
 }
 
 export interface Profile {

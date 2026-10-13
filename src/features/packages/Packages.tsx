@@ -9,6 +9,9 @@ import {
     Region,
     PhysicalItem,
     DurationOption,
+    WorkflowItem,
+    PackageTermItem,
+    RegionPricelistPdf,
 } from '../../types';
 import {
     createPackage,
@@ -27,6 +30,9 @@ import { PackageModal } from './components/PackageModal';
 import { DuplicatePackageModal } from './components/DuplicatePackageModal';
 import { SharePackageModal } from './components/SharePackageModal';
 import { PackageGuideModal } from './components/PackageGuideModal';
+import { WorkflowModal } from './components/WorkflowModal';
+import { PackageTermsModal } from './components/PackageTermsModal';
+import { RegionPricelistModal } from './components/RegionPricelistModal';
 import { buildPublicShareUrl, getPackageShareIdentifier } from '../../utils/publicRouting';
 
 import {
@@ -47,7 +53,12 @@ import {
     X,
     FileText,
     Download,
-    Upload
+    Upload,
+    Link as LinkIcon,
+    ExternalLink,
+    ChevronUp,
+    ChevronDown,
+    GripVertical
 } from 'lucide-react';
 import RupiahInput from '../../shared/form/RupiahInput';
 
@@ -231,13 +242,56 @@ interface CatalogItemCardProps {
     addOn: AddOn;
     onEdit: (addOn: AddOn) => void;
     onDelete: (id: string) => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
+    orderIndex?: number;
 }
 
-const CatalogItemCard: React.FC<CatalogItemCardProps> = ({ addOn, onEdit, onDelete }) => (
+const CatalogItemCard: React.FC<CatalogItemCardProps> = ({
+    addOn,
+    onEdit,
+    onDelete,
+    onMoveUp,
+    onMoveDown,
+    canMoveUp,
+    canMoveDown,
+    orderIndex
+}) => (
     <article className="h-full min-h-[150px] bg-white rounded-xl sm:rounded-2xl border border-[#EAEFF4] shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:border-[#5D87FF]/30 p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all">
         <div>
             <div className="flex items-start justify-between gap-2 mb-2">
-                <span className="w-8 h-8 rounded-xl bg-[#49BEFF]/10 text-[#49BEFF] flex items-center justify-center flex-shrink-0"><Sparkles className="w-4 h-4" /></span>
+                <div className="flex items-center gap-1.5">
+                    <span className="w-8 h-8 rounded-xl bg-[#49BEFF]/10 text-[#49BEFF] flex items-center justify-center flex-shrink-0"><Sparkles className="w-4 h-4" /></span>
+                    {(onMoveUp || onMoveDown) && (
+                        <div className="inline-flex items-center gap-0.5 bg-[#F4F6F9] px-1 py-0.5 rounded-lg border border-[#EAEFF4]">
+                            {orderIndex !== undefined && (
+                                <span className="text-[9px] font-bold text-[#5A6A85] px-1">#{orderIndex + 1}</span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
+                                disabled={!canMoveUp}
+                                className="w-5 h-5 rounded-md bg-white hover:bg-[#49BEFF] text-[#5A6A85] hover:text-white flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed transition-colors shadow-2xs"
+                                title="Pindah ke Atas"
+                                aria-label="Pindah ke Atas"
+                            >
+                                <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                                disabled={!canMoveDown}
+                                className="w-5 h-5 rounded-md bg-white hover:bg-[#49BEFF] text-[#5A6A85] hover:text-white flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed transition-colors shadow-2xs"
+                                title="Pindah ke Bawah"
+                                aria-label="Pindah ke Bawah"
+                            >
+                                <ChevronDown className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <span className="text-[10px] font-medium text-[#5A6A85] bg-[#F4F6F9] px-2 py-0.5 rounded-md">{addOn.region || 'Semua Wilayah'}</span>
             </div>
             <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[#49BEFF]">Add-On</p>
@@ -277,17 +331,11 @@ export const Packages: React.FC<PackagesProps> = ({
     const [isAddOnFormOpen, setIsAddOnFormOpen] = useState(false);
     const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isBookingLinksModalOpen, setIsBookingLinksModalOpen] = useState(false);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isPricelistModalOpen, setIsPricelistModalOpen] = useState(false);
     const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
-    const [termsText, setTermsText] = useState(profile.termsAndConditions || '');
-    const [pricelistFile, setPricelistFile] = useState<File | null>(null);
-    const [isUploadingPricelist, setIsUploadingPricelist] = useState(false);
-    const [weddingWorkflowTitle, setWeddingWorkflowTitle] = useState(profile.publicPageConfig?.weddingWorkflow?.title || 'Wedding Timeline');
-    const [weddingTimeline, setWeddingTimeline] = useState(profile.publicPageConfig?.weddingWorkflow?.timeline?.join('\n') || 'Konsep Acara Pernikahan / Awal → H-90\nPemilihan Vendor / Detail → H-60\nPersiapan Final (Technical Meeting) → H-14\nPelaksanaan Acara Pernikahan → Hari H\nPenyelesaian / Review Akhir → H+7\nSerah Terima Dokumentasi / Laporan → H+30');
-    const [smallEventWorkflowTitle, setSmallEventWorkflowTitle] = useState(profile.publicPageConfig?.smallEventWorkflow?.title || 'Event / Acara Pernikahan Kecil Timeline');
-    const [smallEventTimeline, setSmallEventTimeline] = useState(profile.publicPageConfig?.smallEventWorkflow?.timeline?.join('\n') || 'Konsep / Kesepakatan Awal → H-30\nPersiapan Final → H-7\nPelaksanaan Acara Pernikahan → Hari H\nPenyelesaian Layanan / Laporan → H+14');
 
     // Initial action handler (e.g. redirected from dashboard with "add" action)
     useEffect(() => {
@@ -328,9 +376,24 @@ export const Packages: React.FC<PackagesProps> = ({
         return Array.from(cats).filter(Boolean).sort();
     }, [packages, profile.packageCategories]);
 
+    // Saved ordering from profile
+    const packageOrder = profile.publicPageConfig?.packageOrder || [];
+    const addOnOrder = profile.publicPageConfig?.addOnOrder || [];
+
+    // Helper: sort items by saved order array
+    const sortByOrder = <T extends { id: string }>(items: T[], order: string[]): T[] => {
+        if (!order || order.length === 0) return items;
+        const orderMap = new Map(order.map((id, idx) => [id, idx]));
+        return [...items].sort((a, b) => {
+            const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : Infinity;
+            const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : Infinity;
+            return idxA - idxB;
+        });
+    };
+
     // Filtered Packages
     const filteredPackages = useMemo(() => {
-        return packages.filter(pkg => {
+        const filtered = packages.filter(pkg => {
             const matchesSearch = 
                 pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (pkg.category && pkg.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -342,13 +405,17 @@ export const Packages: React.FC<PackagesProps> = ({
 
             return matchesSearch && matchesRegion && matchesCategory;
         });
-    }, [packages, searchTerm, regionFilter, categoryFilter]);
+        return sortByOrder(filtered, packageOrder);
+    }, [packages, searchTerm, regionFilter, categoryFilter, packageOrder]);
 
-    const filteredAddOns = useMemo(() => addOns.filter(addOn => {
-        const matchesSearch = addOn.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRegion = !regionFilter || (addOn.region && addOn.region.toLowerCase() === regionFilter.toLowerCase());
-        return matchesSearch && matchesRegion && !categoryFilter;
-    }), [addOns, searchTerm, regionFilter, categoryFilter]);
+    const filteredAddOns = useMemo(() => {
+        const filtered = addOns.filter(addOn => {
+            const matchesSearch = addOn.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesRegion = !regionFilter || (addOn.region && addOn.region.toLowerCase() === regionFilter.toLowerCase());
+            return matchesSearch && matchesRegion && !categoryFilter;
+        });
+        return sortByOrder(filtered, addOnOrder);
+    }, [addOns, searchTerm, regionFilter, categoryFilter, addOnOrder]);
 
     type CatalogEntry = { kind: 'package'; pkg: Package } | { kind: 'addon'; addOn: AddOn };
     const catalogEntries = useMemo<CatalogEntry[]>(() => [
@@ -606,8 +673,8 @@ export const Packages: React.FC<PackagesProps> = ({
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: `${pkg.name} - Weddfin`,
-                    text: `Lihat paket ${pkg.name} dari Weddfin`,
+                    title: `${pkg.name} - ${profile?.companyName || 'Vena Pictures'}`,
+                    text: `Lihat paket ${pkg.name} dari ${profile?.companyName || 'Vena Pictures'}`,
                     url: shareUrl,
                 });
                 showNotification(`Paket "${pkg.name}" berhasil dibagikan!`);
@@ -685,128 +752,150 @@ export const Packages: React.FC<PackagesProps> = ({
         setEditingAddOn(null);
     };
 
-    // ── Terms & Conditions Handler ──
-    const handleSaveTerms = async () => {
+    // ── Reorder Handlers ──
+    const handleMovePackage = async (pkgId: string, direction: 'up' | 'down', groupItems?: Package[]) => {
+        // Build current order: use saved order as base, ensure all current package IDs are present
+        const currentIds = packages.map(p => p.id);
+        let order = [...(profile.publicPageConfig?.packageOrder || [])];
+        // Add any missing IDs at the end
+        currentIds.forEach(id => { if (!order.includes(id)) order.push(id); });
+        // Remove IDs no longer in packages
+        order = order.filter(id => currentIds.includes(id));
+
+        const items = groupItems && groupItems.length > 0 ? groupItems : packages;
+        const currentItemIdx = items.findIndex(p => p.id === pkgId);
+        if (currentItemIdx === -1) return;
+
+        const targetItemIdx = direction === 'up' ? currentItemIdx - 1 : currentItemIdx + 1;
+        if (targetItemIdx < 0 || targetItemIdx >= items.length) return;
+
+        const targetPkg = items[targetItemIdx];
+        const idxA = order.indexOf(pkgId);
+        const idxB = order.indexOf(targetPkg.id);
+        if (idxA === -1 || idxB === -1) return;
+
+        [order[idxA], order[idxB]] = [order[idxB], order[idxA]];
+
         try {
-            await updateProfile({
-                ...profile,
-                termsAndConditions: termsText,
-            });
-            showNotification('Syarat dan ketentuan berhasil disimpan.');
-            setIsTermsModalOpen(false);
-        } catch (err) {
-            console.error('Error saving terms:', err);
-            alert('Gagal menyimpan syarat dan ketentuan. Silakan coba lagi.');
-        }
-    };
-
-    // ── Pricelist PDF Handler ──
-    const handlePricelistUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (file.type !== 'application/pdf') {
-                alert('Hanya file PDF yang diperbolehkan.');
-                e.target.value = '';
-                return;
-            }
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                alert('Ukuran file tidak boleh melebihi 10MB.');
-                e.target.value = '';
-                return;
-            }
-            setPricelistFile(file);
-        }
-    };
-
-    const handleUploadPricelist = async () => {
-        if (!pricelistFile) {
-            alert('Silakan pilih file PDF terlebih dahulu.');
-            return;
-        }
-
-        setIsUploadingPricelist(true);
-        try {
-            // Convert file to base64 for storage
-            const base64 = await toBase64(pricelistFile);
-
             await updateProfile({
                 ...profile,
                 publicPageConfig: {
                     ...profile.publicPageConfig,
-                    pricelistPdfUrl: base64,
+                    packageOrder: order,
                 },
             });
-
-            showNotification('Pricelist PDF berhasil diupload.');
-            setIsPricelistModalOpen(false);
-            setPricelistFile(null);
+            setPackages(prev => sortByOrder([...prev], order));
+            showNotification('Urutan paket berhasil diperbarui.');
         } catch (err) {
-            console.error('Error uploading pricelist:', err);
-            alert('Gagal mengupload pricelist. Silakan coba lagi.');
-        } finally {
-            setIsUploadingPricelist(false);
+            console.error('Failed to save package order:', err);
+            showNotification('Gagal menyimpan urutan paket.');
         }
     };
 
-    const handleDeletePricelist = async () => {
-        if (!window.confirm('Apakah Anda yakin ingin menghapus pricelist PDF?')) return;
+    const handleMoveAddOn = async (addOnId: string, direction: 'up' | 'down', groupItems?: AddOn[]) => {
+        const currentIds = addOns.map(a => a.id);
+        let order = [...(profile.publicPageConfig?.addOnOrder || [])];
+        currentIds.forEach(id => { if (!order.includes(id)) order.push(id); });
+        order = order.filter(id => currentIds.includes(id));
+
+        const items = groupItems && groupItems.length > 0 ? groupItems : addOns;
+        const currentItemIdx = items.findIndex(a => a.id === addOnId);
+        if (currentItemIdx === -1) return;
+
+        const targetItemIdx = direction === 'up' ? currentItemIdx - 1 : currentItemIdx + 1;
+        if (targetItemIdx < 0 || targetItemIdx >= items.length) return;
+
+        const targetAddOn = items[targetItemIdx];
+        const idxA = order.indexOf(addOnId);
+        const idxB = order.indexOf(targetAddOn.id);
+        if (idxA === -1 || idxB === -1) return;
+
+        [order[idxA], order[idxB]] = [order[idxB], order[idxA]];
 
         try {
             await updateProfile({
                 ...profile,
                 publicPageConfig: {
                     ...profile.publicPageConfig,
-                    pricelistPdfUrl: undefined,
+                    addOnOrder: order,
                 },
             });
-
-            showNotification('Pricelist PDF berhasil dihapus.');
+            setAddOns(prev => sortByOrder([...prev], order));
+            showNotification('Urutan add-on berhasil diperbarui.');
         } catch (err) {
-            console.error('Error deleting pricelist:', err);
-            alert('Gagal menghapus pricelist. Silakan coba lagi.');
+            console.error('Failed to save add-on order:', err);
+            showNotification('Gagal menyimpan urutan add-on.');
         }
     };
 
-    const handleDownloadPricelist = () => {
-        const pdfUrl = profile.publicPageConfig?.pricelistPdfUrl;
-        if (!pdfUrl) {
-            alert('Tidak ada pricelist PDF yang tersedia.');
-            return;
-        }
-
-        // Create download link
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = 'pricelist.pdf';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    // ── Workflow Handler ──
-    const handleSaveWorkflow = async () => {
+    // ── Package Terms & Conditions Handler (for Public Catalog) ──
+    const handleSavePackageTerms = async (updatedTerms: PackageTermItem[]) => {
         try {
             await updateProfile({
                 ...profile,
                 publicPageConfig: {
                     ...profile.publicPageConfig,
+                    packageTerms: updatedTerms,
+                },
+            });
+            showNotification('Syarat & ketentuan paket berhasil disimpan.');
+        } catch (err) {
+            console.error('Error saving package terms:', err);
+            throw err;
+        }
+    };
+
+    // ── Workflows Handler (for Public Catalog) ──
+    const handleSaveWorkflows = async (updatedWorkflows: WorkflowItem[]) => {
+        try {
+            const weddingWf = updatedWorkflows[0] || { title: 'Wedding Timeline', timeline: [] as string[] };
+            const smallEventWf = updatedWorkflows[1] || { title: 'Event Timeline', timeline: [] as string[] };
+
+            await updateProfile({
+                ...profile,
+                publicPageConfig: {
+                    ...profile.publicPageConfig,
+                    workflows: updatedWorkflows,
                     weddingWorkflow: {
-                        title: weddingWorkflowTitle,
-                        timeline: weddingTimeline.split('\n').filter(item => item.trim() !== ''),
+                        title: weddingWf.title,
+                        timeline: weddingWf.timeline,
                     },
                     smallEventWorkflow: {
-                        title: smallEventWorkflowTitle,
-                        timeline: smallEventTimeline.split('\n').filter(item => item.trim() !== ''),
+                        title: smallEventWf.title,
+                        timeline: smallEventWf.timeline,
                     },
                 },
             });
             showNotification('Workflow berhasil disimpan.');
-            setIsWorkflowModalOpen(false);
         } catch (err) {
-            console.error('Error saving workflow:', err);
-            alert('Gagal menyimpan workflow. Silakan coba lagi.');
+            console.error('Error saving workflows:', err);
+            throw err;
         }
     };
+
+    // ── Regional Pricelist PDF Handler ──
+    const handleSaveRegionPricelists = async (updatedList: RegionPricelistPdf[]) => {
+        try {
+            const sanitizedList = updatedList.map(item => ({
+                ...item,
+                // Truncate base64 if it's excessively large (e.g., > 1MB) to prevent DB timeout
+                pdfUrl: item.pdfUrl.length > 1024 * 1024 * 1 ? item.pdfUrl.substring(0, 1024 * 1024 * 1) + '...' : item.pdfUrl
+            }));
+
+            await updateProfile({
+                ...profile,
+                publicPageConfig: {
+                    ...profile.publicPageConfig,
+                    regionPricelists: sanitizedList,
+                    pricelistPdfUrl: sanitizedList.length > 0 ? sanitizedList[0].pdfUrl : undefined,
+                },
+            });
+        } catch (err) {
+            console.error('Error saving region pricelists:', err);
+            throw err;
+        }
+    };
+
 
     return (
         <div className="space-y-4 sm:space-y-6 animate-fade-in pb-12">
@@ -822,8 +911,15 @@ export const Packages: React.FC<PackagesProps> = ({
                     </p>
                 </div>
 
-                {/* Header Action Buttons */}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                        type="button"
+                        onClick={() => setIsBookingLinksModalOpen(true)}
+                        className="px-3 py-1.5 rounded-lg bg-[#5D87FF]/10 text-[#5D87FF] text-xs font-semibold hover:bg-[#5D87FF]/20 transition-all flex items-center gap-1.5"
+                    >
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        Tautan Booking Publik
+                    </button>
                     <button
                         type="button"
                         onClick={() => setIsGuideModalOpen(true)}
@@ -838,10 +934,10 @@ export const Packages: React.FC<PackagesProps> = ({
                         type="button"
                         onClick={() => setIsTermsModalOpen(true)}
                         className="py-2 sm:py-2 px-3 rounded-xl border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#5A6A85] font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 min-h-[44px] touch-manipulation cursor-pointer"
-                        title="Kelola Syarat & Ketentuan"
+                        title="Kelola Syarat & Ketentuan Paket (Katalog Publik)"
                     >
                         <FileText className="w-4 h-4 text-[#5A6A85]" />
-                        <span className="hidden xs:inline sm:inline">Syarat</span>
+                        <span className="hidden xs:inline sm:inline">Syarat Paket</span>
                     </button>
 
                     <button
@@ -858,7 +954,7 @@ export const Packages: React.FC<PackagesProps> = ({
                         type="button"
                         onClick={() => setIsWorkflowModalOpen(true)}
                         className="py-2 sm:py-2 px-3 rounded-xl border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#5A6A85] font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 min-h-[44px] touch-manipulation cursor-pointer"
-                        title="Kelola Workflow"
+                        title="Kelola Workflow & Timeline (Katalog Publik)"
                     >
                         <List className="w-4 h-4 text-[#5A6A85]" />
                         <span className="hidden xs:inline sm:inline">Workflow</span>
@@ -1037,8 +1133,20 @@ export const Packages: React.FC<PackagesProps> = ({
                                             <span className="text-[10px] sm:text-xs text-[#5A6A85]">{group.items.length} paket</span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 items-stretch">
-                                            {group.items.map(pkg => (
-                                                <PackageCard key={`package-${pkg.id}`} pkg={pkg} onEdit={handleOpenEditPackage} onDuplicate={setCopySourcePkg} onShare={handleShareSinglePackage} onDelete={handleDeletePackage} />
+                                            {group.items.map((pkg, idx) => (
+                                                <PackageCard
+                                                    key={`package-${pkg.id}`}
+                                                    pkg={pkg}
+                                                    onEdit={handleOpenEditPackage}
+                                                    onDuplicate={setCopySourcePkg}
+                                                    onShare={handleShareSinglePackage}
+                                                    onDelete={handleDeletePackage}
+                                                    onMoveUp={() => handleMovePackage(pkg.id, 'up', group.items)}
+                                                    onMoveDown={() => handleMovePackage(pkg.id, 'down', group.items)}
+                                                    canMoveUp={idx > 0}
+                                                    canMoveDown={idx < group.items.length - 1}
+                                                    orderIndex={idx}
+                                                />
                                             ))}
                                         </div>
                                     </div>
@@ -1067,8 +1175,18 @@ export const Packages: React.FC<PackagesProps> = ({
                                             <span className="text-[10px] sm:text-xs text-[#5A6A85]">{group.items.length} add-on</span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 items-stretch">
-                                            {group.items.map(addOn => (
-                                                <CatalogItemCard key={`addon-${addOn.id}`} addOn={addOn} onEdit={handleOpenEditAddOn} onDelete={handleDeleteAddOn} />
+                                            {group.items.map((addOn, idx) => (
+                                                <CatalogItemCard
+                                                    key={`addon-${addOn.id}`}
+                                                    addOn={addOn}
+                                                    onEdit={handleOpenEditAddOn}
+                                                    onDelete={handleDeleteAddOn}
+                                                    onMoveUp={() => handleMoveAddOn(addOn.id, 'up', group.items)}
+                                                    onMoveDown={() => handleMoveAddOn(addOn.id, 'down', group.items)}
+                                                    canMoveUp={idx > 0}
+                                                    canMoveDown={idx < group.items.length - 1}
+                                                    orderIndex={idx}
+                                                />
                                             ))}
                                         </div>
                                     </div>
@@ -1079,9 +1197,17 @@ export const Packages: React.FC<PackagesProps> = ({
                 </div>
             ) : (
                 <div className="overflow-x-auto rounded-2xl border border-[#EAEFF4] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
-                    <table className="w-full min-w-[720px] text-left text-xs">
+                    <table className="w-full min-w-[760px] text-left text-xs">
                         <thead className="bg-[#F4F6F9] text-[10px] uppercase tracking-wider text-[#5A6A85]">
-                            <tr><th className="px-4 py-3">Nama</th><th className="px-4 py-3">Jenis</th><th className="px-4 py-3">Kategori</th><th className="px-4 py-3">Wilayah</th><th className="px-4 py-3 text-right">Harga</th><th className="px-4 py-3 text-right">Aksi</th></tr>
+                            <tr>
+                                <th className="px-3 py-3 w-28 text-center">Urutan</th>
+                                <th className="px-4 py-3">Nama</th>
+                                <th className="px-4 py-3">Jenis</th>
+                                <th className="px-4 py-3">Kategori</th>
+                                <th className="px-4 py-3">Wilayah</th>
+                                <th className="px-4 py-3 text-right">Harga</th>
+                                <th className="px-4 py-3 text-right">Aksi</th>
+                            </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EAEFF4]">
                             {catalogEntries.map(item => {
@@ -1091,6 +1217,65 @@ export const Packages: React.FC<PackagesProps> = ({
                                 const price = isPackage ? item.pkg.price : item.addOn.price;
                                 return (
                                     <tr key={`${item.kind}-${isPackage ? item.pkg.id : item.addOn.id}`} className="hover:bg-[#F8FAFC]">
+                                        <td className="px-3 py-3 text-center">
+                                            <div className="inline-flex items-center gap-1 bg-[#F4F6F9] px-2 py-1 rounded-lg border border-[#EAEFF4]">
+                                                {isPackage ? (
+                                                    (() => {
+                                                        const pkgIdx = filteredPackages.findIndex(p => p.id === item.pkg.id);
+                                                        return (
+                                                            <>
+                                                                <span className="text-[10px] font-bold text-[#5A6A85] w-5 text-center">#{pkgIdx + 1}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMovePackage(item.pkg.id, 'up', filteredPackages)}
+                                                                    disabled={pkgIdx <= 0}
+                                                                    className="p-1 rounded text-[#5A6A85] hover:text-[#5D87FF] disabled:opacity-25 disabled:cursor-not-allowed"
+                                                                    title="Pindah ke Atas"
+                                                                >
+                                                                    <ChevronUp className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMovePackage(item.pkg.id, 'down', filteredPackages)}
+                                                                    disabled={pkgIdx === -1 || pkgIdx >= filteredPackages.length - 1}
+                                                                    className="p-1 rounded text-[#5A6A85] hover:text-[#5D87FF] disabled:opacity-25 disabled:cursor-not-allowed"
+                                                                    title="Pindah ke Bawah"
+                                                                >
+                                                                    <ChevronDown className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </>
+                                                        );
+                                                    })()
+                                                ) : (
+                                                    (() => {
+                                                        const addOnIdx = filteredAddOns.findIndex(a => a.id === item.addOn.id);
+                                                        return (
+                                                            <>
+                                                                <span className="text-[10px] font-bold text-[#5A6A85] w-5 text-center">#{addOnIdx + 1}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMoveAddOn(item.addOn.id, 'up', filteredAddOns)}
+                                                                    disabled={addOnIdx <= 0}
+                                                                    className="p-1 rounded text-[#5A6A85] hover:text-[#49BEFF] disabled:opacity-25 disabled:cursor-not-allowed"
+                                                                    title="Pindah ke Atas"
+                                                                >
+                                                                    <ChevronUp className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMoveAddOn(item.addOn.id, 'down', filteredAddOns)}
+                                                                    disabled={addOnIdx === -1 || addOnIdx >= filteredAddOns.length - 1}
+                                                                    className="p-1 rounded text-[#5A6A85] hover:text-[#49BEFF] disabled:opacity-25 disabled:cursor-not-allowed"
+                                                                    title="Pindah ke Bawah"
+                                                                >
+                                                                    <ChevronDown className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </>
+                                                        );
+                                                    })()
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-4 py-3 font-semibold text-[#2A3547]">{name}</td>
                                         <td className="px-4 py-3 text-[#5A6A85]">{isPackage ? 'Paket' : 'Add-On'}</td>
                                         <td className="px-4 py-3 text-[#5A6A85]">{isPackage ? item.pkg.category || 'Umum' : '—'}</td>
@@ -1172,207 +1357,156 @@ export const Packages: React.FC<PackagesProps> = ({
                 onClose={() => setIsGuideModalOpen(false)}
             />
 
-            {/* ── Terms & Conditions Modal ── */}
-            {isTermsModalOpen && (
+            {/* ── Package Terms & Conditions Modal (CRUD) ── */}
+            <PackageTermsModal
+                isOpen={isTermsModalOpen}
+                onClose={() => setIsTermsModalOpen(false)}
+                profile={profile}
+                onSaveTerms={handleSavePackageTerms}
+                showNotification={showNotification}
+            />
+
+            {/* ── Region Pricelist PDF Modal (CRUD) ── */}
+            <RegionPricelistModal
+                isOpen={isPricelistModalOpen}
+                onClose={() => setIsPricelistModalOpen(false)}
+                profile={profile}
+                onSaveRegionPricelists={handleSaveRegionPricelists}
+                showNotification={showNotification}
+                availableRegions={unionRegions}
+            />
+
+            {/* ── Workflow Modal (CRUD) ── */}
+            <WorkflowModal
+                isOpen={isWorkflowModalOpen}
+                onClose={() => setIsWorkflowModalOpen(false)}
+                profile={profile}
+                onSaveWorkflows={handleSaveWorkflows}
+                showNotification={showNotification}
+            />
+            
+            {/* ── Booking Links Modal ── */}
+            {isBookingLinksModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in overflow-y-auto">
-                    <div className="bg-white rounded-2xl border border-[#EAEFF4] shadow-2xl max-w-2xl w-full p-5 sm:p-6 space-y-4 sm:space-y-5 animate-scale-up my-auto max-h-[90vh] flex flex-col">
+                    <div className="bg-white rounded-2xl border border-[#EAEFF4] shadow-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 sm:space-y-5 animate-scale-up my-auto max-h-[90vh] flex flex-col">
                         <div className="flex items-center justify-between pb-3 border-b border-[#EAEFF4]">
                             <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-xl bg-[#5D87FF]/10 flex items-center justify-center text-[#5D87FF]">
-                                    <FileText className="w-4 h-4" />
+                                    <LinkIcon className="w-4 h-4" />
                                 </div>
                                 <h3 className="font-bold text-sm sm:text-base text-[#2A3547]">
-                                    Kelola Syarat & Ketentuan
+                                    Tautan Booking & Paket per Wilayah
                                 </h3>
                             </div>
-                            <button type="button" onClick={() => setIsTermsModalOpen(false)} className="p-1.5 rounded-lg text-[#5A6A85] hover:text-[#2A3547] hover:bg-[#F4F6F9]">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                            <div>
-                                <label className="block text-xs font-bold text-[#2A3547] mb-1.5 uppercase tracking-wider">Syarat & Ketentuan</label>
-                                <textarea
-                                    value={termsText}
-                                    onChange={(e) => setTermsText(e.target.value)}
-                                    placeholder="Masukkan syarat dan ketentuan untuk booking..."
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAEFF4] bg-[#F4F6F9] focus:bg-white focus:border-[#5D87FF] text-sm text-[#2A3547] outline-none transition-all placeholder:text-[#5A6A85]/50 resize-none"
-                                    rows={12}
-                                />
-                                <p className="text-[10px] text-[#5A6A85] mt-1.5">
-                                    Syarat dan ketentuan ini akan ditampilkan di halaman booking publik. Gunakan emoji (📜, 📅, 💰, dll) untuk header bagian.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2.5 pt-3">
-                            <button type="button" onClick={() => setIsTermsModalOpen(false)} className="flex-1 py-2.5 px-4 rounded-xl border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#5A6A85] font-semibold text-xs transition-colors">Batal</button>
-                            <button type="button" onClick={handleSaveTerms} className="flex-1 py-2.5 px-4 rounded-xl bg-[#5D87FF] hover:bg-[#4871e3] text-white font-semibold text-xs transition-all shadow-[0_4px_12px_rgba(93,135,255,0.25)]">
-                                Simpan
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Pricelist PDF Modal ── */}
-            {isPricelistModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in overflow-y-auto">
-                    <div className="bg-white rounded-2xl border border-[#EAEFF4] shadow-2xl max-w-md w-full p-5 sm:p-6 space-y-4 sm:space-y-5 animate-scale-up my-auto max-h-[90vh] flex flex-col">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#EAEFF4]">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-[#49BEFF]/10 flex items-center justify-center text-[#49BEFF]">
-                                    <Upload className="w-4 h-4" />
-                                </div>
-                                <h3 className="font-bold text-sm sm:text-base text-[#2A3547]">
-                                    Kelola Pricelist PDF
-                                </h3>
-                            </div>
-                            <button type="button" onClick={() => setIsPricelistModalOpen(false)} className="p-1.5 rounded-lg text-[#5A6A85] hover:text-[#2A3547] hover:bg-[#F4F6F9]">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                            {profile.publicPageConfig?.pricelistPdfUrl ? (
-                                <div className="p-4 bg-[#F4F6F9] rounded-xl border border-[#EAEFF4] space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <FileText className="w-5 h-5 text-[#5D87FF]" />
-                                        <span className="text-sm font-semibold text-[#2A3547]">Pricelist PDF Terupload</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleDownloadPricelist}
-                                            className="flex-1 py-2 px-3 rounded-lg bg-[#5D87FF] text-white text-xs font-semibold hover:bg-[#4871e3] flex items-center justify-center gap-1.5"
-                                        >
-                                            <Download className="w-3.5 h-3.5" />
-                                            Download
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleDeletePricelist}
-                                            className="py-2 px-3 rounded-lg bg-rose-50 text-rose-600 text-xs font-semibold hover:bg-rose-100 flex items-center justify-center gap-1.5"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            Hapus
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-4 bg-[#F4F6F9] rounded-xl border border-[#EAEFF4]">
-                                    <p className="text-xs text-[#5A6A85] text-center">Belum ada pricelist PDF yang diupload</p>
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-xs font-bold text-[#2A3547] mb-1.5 uppercase tracking-wider">Upload Pricelist PDF Baru</label>
-                                <input
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handlePricelistUpload}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAEFF4] bg-[#F4F6F9] focus:bg-white focus:border-[#5D87FF] text-sm text-[#2A3547] outline-none transition-all"
-                                />
-                                <p className="text-[10px] text-[#5A6A85] mt-1.5">
-                                    Maksimal ukuran file: 10MB. Hanya format PDF yang diperbolehkan.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2.5 pt-3">
-                            <button type="button" onClick={() => setIsPricelistModalOpen(false)} className="flex-1 py-2.5 px-4 rounded-xl border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#5A6A85] font-semibold text-xs transition-colors">Batal</button>
                             <button
                                 type="button"
-                                onClick={handleUploadPricelist}
-                                disabled={!pricelistFile || isUploadingPricelist}
-                                className="flex-1 py-2.5 px-4 rounded-xl bg-[#49BEFF] hover:bg-sky-500 text-white font-semibold text-xs transition-all shadow-[0_4px_12px_rgba(73,190,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => setIsBookingLinksModalOpen(false)}
+                                className="p-1.5 rounded-lg text-[#5A6A85] hover:text-[#2A3547] hover:bg-[#F4F6F9] cursor-pointer"
                             >
-                                {isUploadingPricelist ? 'Mengupload...' : 'Upload'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Workflow Modal ── */}
-            {isWorkflowModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in overflow-y-auto">
-                    <div className="bg-white rounded-2xl border border-[#EAEFF4] shadow-2xl max-w-2xl w-full p-5 sm:p-6 space-y-4 sm:space-y-5 animate-scale-up my-auto max-h-[90vh] flex flex-col">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#EAEFF4]">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-[#FFAE1F]/10 flex items-center justify-center text-[#FFAE1F]">
-                                    <List className="w-4 h-4" />
-                                </div>
-                                <h3 className="font-bold text-sm sm:text-base text-[#2A3547]">
-                                    Kelola Workflow
-                                </h3>
-                            </div>
-                            <button type="button" onClick={() => setIsWorkflowModalOpen(false)} className="p-1.5 rounded-lg text-[#5A6A85] hover:text-[#2A3547] hover:bg-[#F4F6F9]">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-                            {/* Wedding Workflow */}
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-[#2A3547] mb-1.5 uppercase tracking-wider">Judul Workflow Wedding</label>
-                                    <input
-                                        type="text"
-                                        value={weddingWorkflowTitle}
-                                        onChange={(e) => setWeddingWorkflowTitle(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAEFF4] bg-[#F4F6F9] focus:bg-white focus:border-[#5D87FF] text-sm text-[#2A3547] outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-[#2A3547] mb-1.5 uppercase tracking-wider">Timeline Wedding</label>
-                                    <textarea
-                                        value={weddingTimeline}
-                                        onChange={(e) => setWeddingTimeline(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAEFF4] bg-[#F4F6F9] focus:bg-white focus:border-[#5D87FF] text-sm text-[#2A3547] outline-none transition-all resize-none"
-                                        placeholder="Masukkan timeline wedding. Gunakan Enter untuk memisahkan setiap item timeline."
-                                        rows={6}
-                                    />
-                                    <p className="text-[10px] text-[#5A6A85] mt-1.5">
-                                        Setiap baris baru akan menjadi item timeline terpisah.
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="space-y-4 overflow-y-auto flex-1 pr-1 text-sm text-[#5A6A85]">
+                            <p className="text-xs sm:text-sm text-[#5A6A85] leading-relaxed">
+                                Bagikan tautan booking publik khusus ke calon pengantin. Setiap tautan akan menyaring paket & add-on sesuai dengan wilayah yang dipilih.
+                            </p>
 
-                            <div className="border-t border-[#EAEFF4] pt-4"></div>
-
-                            {/* Small Event Workflow */}
                             <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-[#2A3547] mb-1.5 uppercase tracking-wider">Judul Workflow Acara Kecil</label>
-                                    <input
-                                        type="text"
-                                        value={smallEventWorkflowTitle}
-                                        onChange={(e) => setSmallEventWorkflowTitle(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAEFF4] bg-[#F4F6F9] focus:bg-white focus:border-[#5D87FF] text-sm text-[#2A3547] outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-[#2A3547] mb-1.5 uppercase tracking-wider">Timeline Acara Kecil</label>
-                                    <textarea
-                                        value={smallEventTimeline}
-                                        onChange={(e) => setSmallEventTimeline(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAEFF4] bg-[#F4F6F9] focus:bg-white focus:border-[#5D87FF] text-sm text-[#2A3547] outline-none transition-all resize-none"
-                                        placeholder="Masukkan timeline acara kecil. Gunakan Enter untuk memisahkan setiap item timeline."
-                                        rows={4}
-                                    />
-                                    <p className="text-[10px] text-[#5A6A85] mt-1.5">
-                                        Setiap baris baru akan menjadi item timeline terpisah.
+                                {/* Semua Wilayah */}
+                                <div className="border border-[#EAEFF4] rounded-xl p-3.5 bg-[#F9FBFC] hover:border-[#5D87FF]/40 transition-all space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="font-bold text-xs sm:text-sm text-[#2A3547]">
+                                            Semua Wilayah (Katalog Lengkap)
+                                        </p>
+                                        <span className="text-[10px] font-semibold bg-[#5D87FF]/10 text-[#5D87FF] px-2 py-0.5 rounded-md">
+                                            Lengkap
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-[#5A6A85] font-mono break-all bg-white px-2 py-1 rounded border border-[#EAEFF4]">
+                                        {typeof window !== 'undefined' ? `${window.location.origin}/#/public-packages` : '/#/public-packages'}
                                     </p>
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <a
+                                            href="/#/public-packages"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#5D87FF] hover:bg-[#4570EA] text-white text-xs font-bold transition-colors cursor-pointer"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            <span>Buka Halaman</span>
+                                        </a>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/#/public-packages`;
+                                                navigator.clipboard.writeText(url);
+                                                showNotification('Tautan berhasil disalin!');
+                                            }}
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#2A3547] text-xs font-semibold transition-colors cursor-pointer"
+                                        >
+                                            <Copy className="w-3.5 h-3.5 text-[#5A6A85]" />
+                                            <span>Salin Tautan</span>
+                                        </button>
+                                    </div>
                                 </div>
+
+                                {/* Per Region */}
+                                {REGIONS.map((r) => {
+                                    const regionUrl = typeof window !== 'undefined'
+                                        ? `${window.location.origin}/#/public-packages?region=${r.value}`
+                                        : `/#/public-packages?region=${r.value}`;
+                                    return (
+                                        <div
+                                            key={r.value}
+                                            className="border border-[#EAEFF4] rounded-xl p-3.5 bg-[#F9FBFC] hover:border-[#5D87FF]/40 transition-all space-y-2"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <p className="font-bold text-xs sm:text-sm text-[#2A3547]">
+                                                    Khusus Wilayah: {r.label}
+                                                </p>
+                                                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                                    Wilayah {r.label}
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-[#5A6A85] font-mono break-all bg-white px-2 py-1 rounded border border-[#EAEFF4]">
+                                                {regionUrl}
+                                            </p>
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <a
+                                                    href={`/#/public-packages?region=${r.value}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#5D87FF] hover:bg-[#4570EA] text-white text-xs font-bold transition-colors cursor-pointer"
+                                                >
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                    <span>Buka Halaman</span>
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(regionUrl);
+                                                        showNotification(`Tautan ${r.label} berhasil disalin!`);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#2A3547] text-xs font-semibold transition-colors cursor-pointer"
+                                                >
+                                                    <Copy className="w-3.5 h-3.5 text-[#5A6A85]" />
+                                                    <span>Salin Tautan</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        <div className="flex gap-2.5 pt-3">
-                            <button type="button" onClick={() => setIsWorkflowModalOpen(false)} className="flex-1 py-2.5 px-4 rounded-xl border border-[#EAEFF4] bg-white hover:bg-[#F4F6F9] text-[#5A6A85] font-semibold text-xs transition-colors">Batal</button>
-                            <button type="button" onClick={handleSaveWorkflow} className="flex-1 py-2.5 px-4 rounded-xl bg-[#FFAE1F] hover:bg-[#e5a31d] text-white font-semibold text-xs transition-all shadow-[0_4px_12px_rgba(255,174,31,0.25)]">
-                                Simpan
+                        <div className="pt-2 border-t border-[#EAEFF4]">
+                            <button
+                                type="button"
+                                onClick={() => setIsBookingLinksModalOpen(false)}
+                                className="w-full py-2.5 px-4 rounded-xl bg-[#5D87FF] hover:bg-[#4570EA] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                            >
+                                Tutup
                             </button>
                         </div>
                     </div>

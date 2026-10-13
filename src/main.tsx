@@ -44,7 +44,7 @@ root.render(
               <div className="min-h-screen flex items-center justify-center bg-brand-bg text-brand-text-secondary">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-10 h-10 border-4 border-brand-accent/20 border-t-brand-accent rounded-full animate-spin" />
-                  <span className="text-sm font-medium">Memuat Weddfin...</span>
+                  <span className="text-sm font-medium">Memuat Vena Pictures...</span>
                 </div>
               </div>
             }

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode } from '../../../types';
+import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode, REGIONS, WorkflowItem, PackageTermItem } from '../../../types';
 import Modal from '../../../shared/ui/Modal';
 import { CheckIcon, CameraIcon, WhatsappIcon, cleanPhoneNumber } from '../../../constants';
 import { listPackages } from '../../../services/packages';
@@ -11,7 +11,8 @@ import { createLead as createLeadRow, updateLead as updateLeadRow } from '../../
 import { uploadDpProof } from '../../../services/storage';
 import { createTransaction } from '../../../services/transactions';
 import RupiahInput from '../../../shared/form/RupiahInput';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, MapPin, CheckCircle2, ListOrdered, Sparkles, ShieldCheck, Plus, Trash2 } from 'lucide-react';
+import { toPublicNameSlug } from '../../../utils/publicRouting';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -76,12 +77,27 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
     const [error, setError] = useState<string | null>(null);
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
 
+    // Extract region and lead identifiers from URL (?region=... & lid=... or leadId=...)
+    useEffect(() => {
+        try {
+            const hash = window.location.hash;
+            const hashQuery = hash.includes('?') ? hash.substring(hash.indexOf('?') + 1) : '';
+            const params = new URLSearchParams(hashQuery || window.location.search);
+            const reg = params.get('region');
+            if (reg && reg.trim() !== '') {
+                setSelectedRegion(reg.toLowerCase().trim());
+            }
+        } catch (e) {
+            console.warn('Failed to parse region from URL:', e);
+        }
+    }, []);
+
     const urlLeadId = useMemo(() => {
         try {
             const hash = window.location.hash;
             const hashQuery = hash.includes('?') ? hash.substring(hash.indexOf('?') + 1) : '';
             const params = new URLSearchParams(hashQuery || window.location.search);
-            return params.get('leadId') || null;
+            return params.get('lid') || params.get('leadId') || params.get('leadName') || null;
         } catch {
             return null;
         }
@@ -109,12 +125,10 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             const addOnsData = await listAddOns();
             setAddOns(addOnsData);
 
-            // Load profile if not provided
-            if (!initialUserProfile) {
-                const profileData = await getProfile();
-                if (profileData) {
-                    setUserProfile(profileData);
-                }
+            // Load latest profile to get fresh packageOrder and addOnOrder
+            const profileData = await getProfile();
+            if (profileData) {
+                setUserProfile(profileData);
             }
 
             setError(null);
@@ -130,12 +144,53 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
         loadData();
     }, [loadData]);
     const template = publicPageConfig?.template ?? 'modern';
+
+    // Strict region filtering and ordering for packages
     const visiblePackages = useMemo(() => {
-        if (!selectedRegion) return packages;
-        return packages.filter(p => (p.region ? p.region === selectedRegion : false));
-    }, [packages, selectedRegion]);
+        if (!Array.isArray(packages)) return [];
+        let list = packages;
+        if (selectedRegion) {
+            list = packages.filter(p => {
+                const pkgRegion = p.region ? String(p.region).toLowerCase().trim() : '';
+                return pkgRegion === selectedRegion.toLowerCase().trim();
+            });
+        }
+        const order = userProfile?.publicPageConfig?.packageOrder;
+        if (order && order.length > 0) {
+            const orderMap = new Map(order.map((id, idx) => [id, idx]));
+            return [...list].sort((a, b) => {
+                const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999999;
+                const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999999;
+                return idxA - idxB;
+            });
+        }
+        return list;
+    }, [packages, selectedRegion, userProfile?.publicPageConfig?.packageOrder]);
+
+    // Strict region filtering and ordering for add-ons
+    const visibleAddOns = useMemo(() => {
+        if (!Array.isArray(addOns)) return [];
+        let list = addOns;
+        if (selectedRegion) {
+            list = addOns.filter(a => {
+                const addonRegion = a.region ? String(a.region).toLowerCase().trim() : '';
+                return addonRegion === selectedRegion.toLowerCase().trim();
+            });
+        }
+        const order = userProfile?.publicPageConfig?.addOnOrder;
+        if (order && order.length > 0) {
+            const orderMap = new Map(order.map((id, idx) => [id, idx]));
+            return [...list].sort((a, b) => {
+                const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999999;
+                const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999999;
+                return idxA - idxB;
+            });
+        }
+        return list;
+    }, [addOns, selectedRegion, userProfile?.publicPageConfig?.addOnOrder]);
 
     const [bookingModal, setBookingModal] = useState<{ isOpen: boolean; pkg: Package | null }>({ isOpen: false, pkg: null });
+    const [optionalPackages, setOptionalPackages] = useState<{ id: string; name: string; price: number; selectedDuration?: string }[]>([]);
     const [formData, setFormData] = useState(initialForm);
     const [paymentProof, setPaymentProof] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,48 +199,40 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
     const [isTermsOpen, setIsTermsOpen] = useState(false);
-    const [isWeddingTimelineOpen, setIsWeddingTimelineOpen] = useState(false);
-    const [isSmallEventTimelineOpen, setIsSmallEventTimelineOpen] = useState(false);
+    const [openWorkflowId, setOpenWorkflowId] = useState<string | null>(null);
 
     // Note: We avoid early returns before all hooks to keep hook order stable across renders.
 
-    // Group packages by category
+    // Group visiblePackages by category while preserving category order based on visiblePackages
     const packagesByCategory = useMemo(() => {
         const grouped: Record<string, Package[]> = {};
 
-        if (!Array.isArray(packages)) {
-            console.error('Packages is not an array:', packages);
+        if (!Array.isArray(visiblePackages)) {
+            console.error('visiblePackages is not an array:', visiblePackages);
             return {};
         }
 
-        for (const pkg of packages) {
+        // Track category appearance order based on sorted visiblePackages
+        const categoryOrder: string[] = [];
+
+        for (const pkg of visiblePackages) {
             if (!pkg) continue;
 
             const category = pkg.category || 'Lainnya';
             if (!grouped[category]) {
                 grouped[category] = [];
+                categoryOrder.push(category);
             }
             grouped[category].push(pkg);
         }
 
         const orderedGrouped: Record<string, Package[]> = {};
-
-        if (userProfile?.packageCategories?.length) {
-            userProfile.packageCategories.forEach((category: string) => {
-                if (grouped[category]) {
-                    orderedGrouped[category] = grouped[category];
-                    delete grouped[category];
-                }
-            });
-        }
-
-        // Add remaining categories
-        Object.keys(grouped).forEach(category => {
+        categoryOrder.forEach(category => {
             orderedGrouped[category] = grouped[category];
         });
 
         return orderedGrouped;
-    }, [packages, userProfile?.packageCategories]);
+    }, [visiblePackages]);
 
     const mostPopularPackageId = useMemo(() => {
         if (projects.length === 0) return null;
@@ -210,6 +257,95 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
         'Wisuda': "Rayakan pencapaian akademik Anda dengan layanan spesial dari kami.",
         'Keluarga': "Menciptakan momen berharga dan layanan terbaik untuk kebahagiaan keluarga Anda."
     };
+
+    const activeWorkflows = useMemo<WorkflowItem[]>(() => {
+        if (userProfile?.publicPageConfig?.workflows && userProfile.publicPageConfig.workflows.length > 0) {
+            return userProfile.publicPageConfig.workflows;
+        }
+        const list: WorkflowItem[] = [];
+        if (userProfile?.publicPageConfig?.weddingWorkflow?.title) {
+            list.push({
+                id: 'wf-wedding',
+                title: userProfile.publicPageConfig.weddingWorkflow.title,
+                timeline: userProfile.publicPageConfig.weddingWorkflow.timeline || []
+            });
+        }
+        if (userProfile?.publicPageConfig?.smallEventWorkflow?.title) {
+            list.push({
+                id: 'wf-small-event',
+                title: userProfile.publicPageConfig.smallEventWorkflow.title,
+                timeline: userProfile.publicPageConfig.smallEventWorkflow.timeline || []
+            });
+        }
+        return list.length > 0 ? list : [
+            {
+                id: 'wf-wedding',
+                title: 'Wedding Timeline',
+                timeline: [
+                    'Konsep Acara Pernikahan / Awal → H-90',
+                    'Pemilihan Vendor / Detail → H-60',
+                    'Persiapan Final (Technical Meeting) → H-14',
+                    'Pelaksanaan Acara Pernikahan → Hari H',
+                    'Penyelesaian / Review Akhir → H+7',
+                    'Serah Terima Dokumentasi / Laporan → H+30'
+                ]
+            },
+            {
+                id: 'wf-small-event',
+                title: 'Event / Acara Pernikahan Kecil Timeline',
+                timeline: [
+                    'Konsep / Kesepakatan Awal → H-30',
+                    'Persiapan Final → H-7',
+                    'Pelaksanaan Acara Pernikahan → Hari H',
+                    'Penyelesaian Layanan / Laporan → H+14'
+                ]
+            }
+        ];
+    }, [userProfile?.publicPageConfig]);
+
+    const activePackageTerms = useMemo<PackageTermItem[]>(() => {
+        if (userProfile?.publicPageConfig?.packageTerms && userProfile.publicPageConfig.packageTerms.length > 0) {
+            return userProfile.publicPageConfig.packageTerms;
+        }
+        return [
+            {
+                id: 'pt-booking',
+                title: 'Ketentuan Pemesanan & Pembayaran DP',
+                items: [
+                    'Booking paket dinyatakan sah setelah pembayaran Down Payment (DP) minimal 30%.',
+                    'Tanggal acara hanya akan di-lock setelah bukti transfer DP diverifikasi.',
+                    'Pelunasan total biaya paket dilakukan selambat-lambatnya H-7 sebelum hari pelaksanaan acara.',
+                    'Pembayaran hanya sah melalui rekening resmi vendor yang tertera di dokumen tagihan.'
+                ]
+            },
+            {
+                id: 'pt-reschedule',
+                title: 'Perubahan Jadwal & Penyesuaian Paket',
+                items: [
+                    'Permintaan penyesuaian jadwal (reschedule) wajib disampaikan minimal H-30 sebelum hari acara.',
+                    'Perubahan tanggal tunduk pada ketersediaan jadwal tim vendor pada tanggal yang baru.',
+                    'Upgrade paket atau penambahan add-on dapat dilakukan kapan saja sebelum hari H.'
+                ]
+            },
+            {
+                id: 'pt-execution',
+                title: 'Pelaksanaan & Penyerahan Hasil Layanan',
+                items: [
+                    'Tim vendor akan tiba di lokasi acara selambat-lambatnya 2 jam sebelum rundown dimulai.',
+                    'Preview hasil layanan (teaser / highlight foto & video) dikirimkan maksimal H+7 acara.',
+                    'Seluruh hasil final (full album / Google Drive / video edit) diserahkan maksimal H+30 acara.'
+                ]
+            },
+            {
+                id: 'pt-cancellation',
+                title: 'Pembatalan & Force Majeure',
+                items: [
+                    'Pembatalan sepihak dari pihak klien menyebabkan DP hangus dan tidak dapat dikembalikan.',
+                    'Keadaan force majeure (bencana alam, huru-hara, regulasi darurat) diselesaikan secara musyawarah mufakat.'
+                ]
+            }
+        ];
+    }, [userProfile?.publicPageConfig?.packageTerms]);
 
     const formattedTerms = useMemo(() => {
         if (!userProfile.termsAndConditions || userProfile.termsAndConditions.trim() === '') return null;
@@ -241,12 +377,16 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             const selected = opts.find(o => o.label === formData.durationSelection) || opts.find(o => o.default) || opts[0];
             packagePrice = selected?.price ?? bookingModal.pkg.price;
         }
-        const addOnsPrice = addOns
+        const addOnsPrice = visibleAddOns
             .filter(addon => formData.selectedAddOnIds.includes(addon.id))
             .reduce((sum, addon) => sum + addon.price, 0);
 
+        const optionalPackagesPrice = optionalPackages.reduce((sum, opt) => {
+            return sum + (opt.price || 0);
+        }, 0);
+
         const transportFee = Number(formData.transportCost) || 0;
-        const totalBeforeDiscount = packagePrice + addOnsPrice;
+        const totalBeforeDiscount = packagePrice + addOnsPrice + optionalPackagesPrice;
         let discountAmount = 0;
         let discountText = '';
 
@@ -278,7 +418,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
 
         const totalProject = totalBeforeDiscount - discountAmount + transportFee;
         return { totalBeforeDiscount, discountAmount, totalProject, discountText };
-    }, [formData.selectedAddOnIds, formData.promoCode, formData.transportCost, formData.durationSelection, bookingModal.pkg, addOns, promoCodes]);
+    }, [formData.selectedAddOnIds, formData.promoCode, formData.transportCost, formData.durationSelection, bookingModal.pkg, addOns, promoCodes, optionalPackages, packages]);
 
     const handleOpenBookingModal = (pkg: Package) => {
         setBookingModal({ isOpen: true, pkg });
@@ -350,7 +490,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             }
         }
 
-        const selectedAddOns = addOns.filter(addon => formData.selectedAddOnIds.includes(addon.id));
+        const selectedAddOns = visibleAddOns.filter(addon => formData.selectedAddOnIds.includes(addon.id));
         const remainingPayment = totalProject - dpAmount;
         const transportFee = Number(formData.transportCost) || 0;
 
@@ -392,21 +532,55 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
             addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
         });
 
-        const createdLead = await createLeadRow({
-            name: createdClient.name,
-            contactChannel: ContactChannel.WEBSITE,
-            location: createdProject.location,
-            status: LeadStatus.CONVERTED,
-            date: new Date().toISOString(),
-            notes: `Dikonversi dari halaman Package. Acara Pernikahan: ${createdProject.projectName}. Pengantin ID: ${createdClient.id}`,
-            whatsapp: createdClient.phone,
-        } as any);
+        // Konversi lead: jika ada lid di URL → update lead existing, jika tidak → buat lead baru
+        if (urlLeadId) {
+            try {
+                const leadNote = `Dikonversi dari halaman Package. Booking: ${createdProject.projectName}. Client ID: ${createdClient.id}`;
+                const existingLead = (leads || []).find(l =>
+                    l.id.startsWith(urlLeadId) ||
+                    l.id === urlLeadId ||
+                    toPublicNameSlug(l.name) === urlLeadId
+                );
+                if (existingLead) {
+                    const updatedLead = await updateLeadRow(existingLead.id, { status: LeadStatus.CONVERTED, notes: leadNote });
+                    setLeads(prev => prev.map(l => l.id === existingLead.id ? updatedLead : l));
+                } else {
+                    // Fallback: lead tidak ditemukan, buat baru
+                    const newLead = await createLeadRow({
+                        name: createdClient.name,
+                        contactChannel: ContactChannel.WEBSITE,
+                        location: createdProject.location,
+                        status: LeadStatus.CONVERTED,
+                        date: new Date().toISOString(),
+                        notes: leadNote,
+                        whatsapp: createdClient.phone,
+                    } as any);
+                    setLeads(prev => [newLead, ...prev]);
+                }
+            } catch (error) {
+                console.error('[Lead] Failed to update lead status:', error);
+            }
+        } else {
+            try {
+                const createdLead = await createLeadRow({
+                    name: createdClient.name,
+                    contactChannel: ContactChannel.WEBSITE,
+                    location: createdProject.location,
+                    status: LeadStatus.CONVERTED,
+                    date: new Date().toISOString(),
+                    notes: `Dikonversi dari halaman Package. Acara Pernikahan: ${createdProject.projectName}. Pengantin ID: ${createdClient.id}`,
+                    whatsapp: createdClient.phone,
+                } as any);
+                setLeads(prev => [createdLead, ...prev]);
+            } catch (error) {
+                console.error('[Lead] Failed to create lead:', error);
+            }
+        }
 
         setClients(prev => [createdClient, ...prev]);
         // Pastikan muncul di halaman Booking
         const createdProjectWithBooking: Project = { ...createdProject, bookingStatus: BookingStatus.BARU } as Project;
         setProjects(prev => [createdProjectWithBooking, ...prev]);
-        setLeads(prev => [createdLead, ...prev]);
 
         if (promoCodeAppliedId) {
             setPromoCodes(prev => prev.map(p => p.id === promoCodeAppliedId ? { ...p, usageCount: p.usageCount + 1 } : p));
@@ -527,51 +701,82 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                 @media (max-width: 768px) {
                     .template-wrapper .package-card-cover { height: 160px !important; }
                     .template-wrapper .package-card-title { font-size: 1.05rem !important; line-height: 1.35 !important; }
-                    .template-wrapper .package-desc-text { font-size: 0.9rem !important; line-height: 1.5 !important; }
+                    .template-wrapper .package-desc-text { font-size: 0.82rem !important; line-height: 1.5 !important; }
+                    .template-wrapper .package-duration-row {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                        gap: 0.5rem !important;
+                        overflow: visible !important;
+                    }
                     .template-wrapper .package-duration-heading { font-size: 0.75rem !important; }
-                    .template-wrapper .package-duration-option { min-height: 42px !important; padding: 0.5rem !important; }
-                    .template-wrapper .package-duration-label { font-size: 0.6875rem !important; line-height: 1.25 !important; }
-                    .template-wrapper .package-duration-price { font-size: 0.8125rem !important; line-height: 1.2 !important; }
+                    .template-wrapper .package-duration-option {
+                        min-height: 42px !important;
+                        padding: 0.35rem 0.4rem !important;
+                        min-width: 0 !important;
+                        max-width: 100% !important;
+                        width: 100% !important;
+                        flex: initial !important;
+                        gap: 0.15rem !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        text-align: center !important;
+                    }
+                    .template-wrapper .package-duration-label {
+                        font-size: 0.7rem !important;
+                        line-height: 1.1 !important;
+                        min-width: 0 !important;
+                        max-width: 100% !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        display: block !important;
+                        text-align: center !important;
+                    }
+                    .template-wrapper .package-duration-price {
+                        font-size: 0.75rem !important;
+                        line-height: 1.1 !important;
+                        white-space: nowrap !important;
+                        flex-shrink: 0 !important;
+                        max-width: 100% !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        display: block !important;
+                        text-align: center !important;
+                    }
 
-                    /* Mobile booking button — ukuran teks lebih besar dan padding kiri kanan disesuaikan */
+                    /* Mobile booking button — kecil namun tetap nyaman dibaca */
                     .template-wrapper button.package-booking-button.button-primary,
                     .template-wrapper .package-booking-button,
                     button.package-booking-button,
                     .package-booking-button {
-                        font-size: 1.25rem !important;
-                        font-weight: 800 !important;
-                        min-height: 54px !important;
+                        font-size: 0.9rem !important;
+                        font-weight: 700 !important;
+                        min-height: 42px !important;
                         max-height: none !important;
                         height: auto !important;
-                        line-height: 1.35 !important;
-                        padding: 0.875rem 1.25rem !important;
+                        line-height: 1.3 !important;
+                        padding: 0.7rem 0.9rem !important;
                         width: 100% !important;
-                        border-radius: 0.875rem !important;
+                        border-radius: 0.75rem !important;
                         letter-spacing: 0.01em !important;
                         display: flex !important;
                         align-items: center !important;
                         justify-content: center !important;
                         text-align: center !important;
-                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
                     }
                 }
             `}</style>
-                <div className="w-full max-w-7xl mx-auto py-12 px-4">
-                    <header className="text-center mb-12 md:mb-16 widget-animate">
+                <div className="w-full max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+                    <header className="text-center mb-16 widget-animate">
                         {/* Hero Image */}
-                        <div className="w-full h-48 sm:h-64 md:h-80 mb-8 rounded-3xl overflow-hidden shadow-xl border border-public-border">
+                        <div className="w-full h-56 sm:h-72 md:h-96 mb-8 rounded-3xl overflow-hidden shadow-2xl border border-brand-border/60">
                             <img src={userProfile.publicPageConfig?.backgroundImages?.portalPengantin || "/assets/images/backgrounds/portal-pengantin-3.jpg"} alt="Hero" className="w-full h-full object-cover" />
                         </div>
-                        {userProfile.logoBase64 ? (
-                            <img src={userProfile.logoBase64} alt="Company Logo" className="h-16 md:h-20 mx-auto mb-4 object-contain" />
-                        ) : (
-                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gradient">{userProfile.companyName}</h1>
-                        )}
-                        {publicPageConfig?.title && (
-                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-brand-text-light mt-4">{publicPageConfig.title}</h2>
-                        )}
                         {publicPageConfig?.introduction && (
-                            <p className="text-base md:text-lg text-brand-text-secondary mt-4 max-w-3xl mx-auto">{publicPageConfig.introduction}</p>
+                            <p className="text-base md:text-lg text-brand-text-secondary mt-4 max-w-3xl mx-auto leading-relaxed">{publicPageConfig.introduction}</p>
                         )}
                     </header>
 
@@ -579,7 +784,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         <section className="mb-8 md:mb-10 widget-animate -mx-4" style={{ animationDelay: '100ms' }}>
                             <div className="text-center mb-4">
                                 <h3 className="text-2xl font-bold text-brand-text-light">Pricelist</h3>
-                                <p className="text-sm text-brand-text-secondary mt-1">Pricelist Weddfin</p>
+                                <p className="text-sm text-brand-text-secondary mt-1">Pricelist {userProfile?.companyName || 'Vena Pictures'}</p>
                             </div>
                             <div className="space-y-2 sm:space-y-3">
                                 {publicPageConfig?.galleryImages?.map((imgSrc, index) => (
@@ -597,105 +802,140 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     )}
 
                     <section className="mb-12 md:mb-16 grid md:grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 widget-animate" style={{ animationDelay: '200ms' }}>
+                        {/* ── Workflow & Timeline Layanan ── */}
                         <div
                             className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border p-3 md:p-4 sm:p-6 cursor-pointer hover:border-brand-accent/50 transition-all"
                             onClick={() => {
-                                setIsWorkflowOpen(!isWorkflowOpen);
+                                const nextState = !isWorkflowOpen;
+                                setIsWorkflowOpen(nextState);
                                 setIsTermsOpen(false);
-                                // Otomatis buka kedua timeline saat workflow dibuka
-                                if (!isWorkflowOpen) {
-                                    setIsWeddingTimelineOpen(true);
-                                    setIsSmallEventTimelineOpen(true);
+                                if (nextState && !openWorkflowId && activeWorkflows.length > 0) {
+                                    setOpenWorkflowId(activeWorkflows[0].id);
                                 }
                             }}
                         >
                             <div className="flex justify-between items-center text-left">
-                                <h3 className="text-xl md:text-2xl font-bold text-gradient">{userProfile.publicPageConfig?.weddingWorkflow?.title || 'Wedding Workflow Weddfin'}</h3>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-brand-accent/15 flex items-center justify-center text-brand-accent">
+                                        <ListOrdered className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg md:text-xl font-bold text-gradient">
+                                            Workflow & Timeline Layanan
+                                        </h3>
+                                        <p className="text-xs text-brand-text-secondary">
+                                            {activeWorkflows.length} Alur Kerja Tersedia
+                                        </p>
+                                    </div>
+                                </div>
                                 <ChevronDownIcon className={`w-6 h-6 transition-transform text-brand-text-secondary ${isWorkflowOpen ? 'rotate-180' : ''}`} />
                             </div>
+
                             <div className={`transition-all duration-500 ease-in-out grid ${isWorkflowOpen ? 'grid-rows-[1fr] mt-4 opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                 <div className="overflow-hidden">
-                                    <div className="space-y-4">
-                                        <div className="border border-brand-border rounded-xl overflow-hidden">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setIsWeddingTimelineOpen(!isWeddingTimelineOpen);
-                                                    setIsSmallEventTimelineOpen(false);
-                                                }}
-                                                className="w-full flex justify-between items-center text-left p-3 bg-brand-bg hover:bg-brand-bg/80 transition-colors"
-                                            >
-                                                <h4 className="font-semibold text-brand-text-light">Wedding Timeline</h4>
-                                                <ChevronDownIcon className={`w-5 h-5 transition-transform text-brand-text-secondary ${isWeddingTimelineOpen ? 'rotate-180' : ''}`} />
-                                            </button>
-                                            <div className={`transition-all duration-500 ease-in-out grid ${isWeddingTimelineOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                                                <div className="overflow-hidden">
-                                                    <ul className="p-3 space-y-1 text-sm text-brand-text-secondary list-disc list-inside">
-                                                        {(userProfile.publicPageConfig?.weddingWorkflow?.timeline || [
-                                                            'Konsep Acara Pernikahan / Awal → H-90',
-                                                            'Pemilihan Vendor / Detail → H-60',
-                                                            'Persiapan Final (Technical Meeting) → H-14',
-                                                            'Pelaksanaan Acara Pernikahan → Hari H',
-                                                            'Penyelesaian / Review Akhir → H+7',
-                                                            'Serah Terima Dokumentasi / Laporan → H+30'
-                                                        ]).map((item, index) => (
-                                                            <li key={index}>{item}</li>
-                                                        ))}
-                                                    </ul>
+                                    <div className="space-y-3">
+                                        {activeWorkflows.map((wf, wfIdx) => {
+                                            const isExpanded = openWorkflowId === wf.id || (openWorkflowId === null && wfIdx === 0);
+                                            return (
+                                                <div key={wf.id || wfIdx} className="border border-brand-border rounded-xl overflow-hidden bg-brand-bg/40">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenWorkflowId(isExpanded ? '' : wf.id);
+                                                        }}
+                                                        className="w-full flex justify-between items-center text-left p-3 hover:bg-brand-bg/80 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-5 h-5 rounded-md bg-brand-accent/20 text-brand-accent flex items-center justify-center text-xs font-bold">
+                                                                {wfIdx + 1}
+                                                            </span>
+                                                            <h4 className="font-semibold text-brand-text-light text-sm">
+                                                                {wf.title}
+                                                            </h4>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] bg-brand-surface text-brand-text-secondary px-2 py-0.5 rounded-full border border-brand-border">
+                                                                {wf.timeline.length} Tahapan
+                                                            </span>
+                                                            <ChevronDownIcon className={`w-4 h-4 transition-transform text-brand-text-secondary ${isExpanded ? 'rotate-180' : ''}`} />
+                                                        </div>
+                                                    </button>
+                                                    <div className={`transition-all duration-300 ease-in-out grid ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                                                        <div className="overflow-hidden">
+                                                            <div className="p-3 pt-1 space-y-2 border-t border-brand-border/60">
+                                                                {wf.timeline.map((item, itemIdx) => (
+                                                                    <div key={itemIdx} className="flex items-start gap-2.5 text-xs sm:text-sm text-brand-text-secondary">
+                                                                        <span className="w-4 h-4 rounded-full bg-brand-accent/15 text-brand-accent flex items-center justify-center text-[10px] font-bold mt-0.5 shrink-0">
+                                                                            {itemIdx + 1}
+                                                                        </span>
+                                                                        <span className="leading-snug">{item}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div className="border border-brand-border rounded-xl overflow-hidden">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setIsSmallEventTimelineOpen(!isSmallEventTimelineOpen);
-                                                    setIsWeddingTimelineOpen(false);
-                                                }}
-                                                className="w-full flex justify-between items-center text-left p-3 bg-brand-bg hover:bg-brand-bg/80 transition-colors"
-                                            >
-                                                <h4 className="font-semibold text-brand-text-light">{userProfile.publicPageConfig?.smallEventWorkflow?.title || 'Event / Acara Pernikahan Kecil Timeline'}</h4>
-                                                <ChevronDownIcon className={`w-5 h-5 transition-transform text-brand-text-secondary ${isSmallEventTimelineOpen ? 'rotate-180' : ''}`} />
-                                            </button>
-                                            <div className={`transition-all duration-500 ease-in-out grid ${isSmallEventTimelineOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                                                <div className="overflow-hidden">
-                                                    <ul className="p-3 space-y-1 text-sm text-brand-text-secondary list-disc list-inside">
-                                                        {(userProfile.publicPageConfig?.smallEventWorkflow?.timeline || [
-                                                            'Konsep / Kesepakatan Awal → H-30',
-                                                            'Persiapan Final → H-7',
-                                                            'Pelaksanaan Acara Pernikahan → Hari H',
-                                                            'Penyelesaian Layanan / Laporan → H+14'
-                                                        ]).map((item, index) => (
-                                                            <li key={index}>{item}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        {/* ── Syarat & Ketentuan Paket ── */}
                         <div
                             className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border p-3 md:p-4 sm:p-6 cursor-pointer hover:border-brand-accent/50 transition-all"
                             onClick={() => {
                                 setIsTermsOpen(!isTermsOpen);
-                                setIsWorkflowOpen(false); // Tutup workflow saat syarat ketentuan dibuka
-                                setIsWeddingTimelineOpen(false); // Tutup timeline
-                                setIsSmallEventTimelineOpen(false); // Tutup timeline
+                                setIsWorkflowOpen(false);
                             }}
                         >
                             <div className="flex justify-between items-center text-left">
-                                <h3 className="text-xl md:text-2xl font-bold text-gradient">Syarat & Ketentuan</h3>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-brand-accent/15 flex items-center justify-center text-brand-accent">
+                                        <ShieldCheck className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg md:text-xl font-bold text-gradient">
+                                            Syarat & Ketentuan Paket
+                                        </h3>
+                                        <p className="text-xs text-brand-text-secondary">
+                                            {activePackageTerms.length} Bagian Ketentuan Booking
+                                        </p>
+                                    </div>
+                                </div>
                                 <ChevronDownIcon className={`w-6 h-6 transition-transform text-brand-text-secondary ${isTermsOpen ? 'rotate-180' : ''}`} />
                             </div>
+
                             <div className={`transition-all duration-500 ease-in-out grid ${isTermsOpen ? 'grid-rows-[1fr] mt-4 opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                 <div className="overflow-hidden">
-                                    <div className="max-h-80 overflow-y-auto pr-4 text-sm space-y-2">
-                                        {formattedTerms ? (
+                                    <div className="max-h-96 overflow-y-auto pr-1 space-y-3">
+                                        {activePackageTerms && activePackageTerms.length > 0 ? (
+                                            activePackageTerms.map((section, sIdx) => (
+                                                <div key={section.id || sIdx} className="border border-brand-border/80 bg-brand-bg/40 rounded-xl p-3.5 space-y-2.5">
+                                                    <h4 className="font-semibold text-brand-text-light text-sm flex items-center gap-2">
+                                                        <span className="w-5 h-5 rounded-md bg-brand-accent/20 text-brand-accent flex items-center justify-center text-xs font-bold">
+                                                            {sIdx + 1}
+                                                        </span>
+                                                        <span>{section.title}</span>
+                                                    </h4>
+                                                    <ul className="space-y-1.5 pl-7 text-xs sm:text-sm text-brand-text-secondary">
+                                                        {section.items.map((item, itemIdx) => (
+                                                            <li key={itemIdx} className="flex items-start gap-2">
+                                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                                                <span className="leading-snug">{item}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ))
+                                        ) : formattedTerms ? (
                                             <div>{formattedTerms}</div>
                                         ) : (
-                                            <p className="text-brand-text-secondary text-center py-8">Syarat dan ketentuan belum diatur oleh vendor.</p>
+                                            <p className="text-brand-text-secondary text-center py-8">
+                                                Syarat dan ketentuan paket belum diatur oleh vendor.
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -703,97 +943,94 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                         </div>
                     </section>
 
-                    <div className="grid lg:grid-cols-3 gap-6 md:gap-8 items-start">
-                        <section className="lg:col-span-2 space-y-12 md:space-y-16">
+
+
+                    <div className="grid lg:grid-cols-3 gap-8 md:gap-10 items-start">
+                        <section className="lg:col-span-2 space-y-16">
+                            {Object.keys(packagesByCategory).length === 0 && (
+                                <div className="text-center py-20 bg-brand-surface rounded-3xl border border-brand-border p-8 shadow-sm">
+                                    <MapPin className="w-12 h-12 mx-auto text-brand-text-secondary mb-3 opacity-40" />
+                                    <h4 className="text-lg font-bold text-brand-text-light">Belum Ada Paket untuk Wilayah Ini</h4>
+                                    <p className="text-sm text-brand-text-secondary mt-1 max-w-md mx-auto">
+                                        Saat ini belum ada paket yang terdaftar khusus untuk wilayah {selectedRegion ? (REGIONS.find(r => r.value.toLowerCase() === selectedRegion.toLowerCase())?.label || selectedRegion) : ''}.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedRegion(null)}
+                                        className="mt-6 px-5 py-2.5 rounded-xl bg-brand-accent text-white text-xs font-bold shadow-sm cursor-pointer hover:bg-brand-accent-hover transition-colors"
+                                    >
+                                        Tampilkan Semua Wilayah
+                                    </button>
+                                </div>
+                            )}
                             {Object.entries(packagesByCategory as Record<string, Package[]>).map(([category, pkgs]) => (
-                                <div key={category}>
-                                    <div className="mb-6 md:mb-8">
-                                        <h3 className="text-2xl md:text-3xl font-bold text-brand-text-light">{category}</h3>
-                                        <div className="text-brand-text-secondary mt-2 max-w-2xl">
+                                <div key={category} className="space-y-8">
+                                    <div>
+                                        <h3 className="text-2xl md:text-3xl font-extrabold text-brand-text-light">{category}</h3>
+                                        <p className="text-brand-text-secondary mt-2 max-w-2xl text-sm md:text-base leading-relaxed">
                                             {categoryDescriptions[category] || `Berbagai pilihan Package untuk kebutuhan ${category.toLowerCase()} Anda.`}
-                                        </div>
+                                        </p>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                                         {pkgs.map((pkg, index) => (
-                                            <div key={pkg.id} className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl widget-animate" style={{ animationDelay: `${200 + index * 100}ms` }}>
+                                            <div key={pkg.id} className="relative bg-brand-surface rounded-3xl shadow-lg border border-brand-border flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl widget-animate" style={{ animationDelay: `${200 + index * 100}ms` }}>
                                                 {pkg.id === mostPopularPackageId && (
-                                                    <div className="absolute -top-3 right-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">Paling Populer</div>
+                                                    <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-md z-10">Paling Populer</div>
                                                 )}
                                                 {pkg.coverImage ? (
-                                                    <div className="package-card-cover w-full h-36 sm:h-48 overflow-hidden rounded-t-2xl">
+                                                    <div className="package-card-cover w-full h-48 sm:h-56 overflow-hidden bg-brand-bg">
                                                         <img
                                                             src={pkg.coverImage}
                                                             alt={pkg.name}
                                                             loading="lazy"
-                                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                                                             onError={(e) => {
-                                                                // If image fails to load, show the camera icon
                                                                 const target = e.target as HTMLImageElement;
                                                                 target.style.display = 'none';
-                                                                const parent = target.parentElement;
-                                                                if (parent) {
-                                                                    parent.innerHTML = `
-                                                                    <div class="w-full h-48 bg-brand-bg flex items-center justify-center">
-                                                                        <svg class="w-12 h-12 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                                        </svg>
-                                                                    </div>`;
-                                                                }
                                                             }}
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="package-card-cover w-full h-36 sm:h-48 bg-brand-bg flex items-center justify-center rounded-t-2xl overflow-hidden">
-                                                        <svg className="w-12 h-12 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                        </svg>
+                                                    <div className="package-card-cover w-full h-48 sm:h-56 bg-brand-bg/60 flex items-center justify-center">
+                                                        <CameraIcon className="w-12 h-12 text-brand-text-secondary/50" />
                                                     </div>
                                                 )}
-                                                <div className="p-3 md:p-4 sm:p-6 flex flex-col flex-grow">
-                                                    <h4 className="package-card-title text-base md:text-lg lg:text-xl font-bold text-gradient">{pkg.name}</h4>
+                                                <div className="p-6 md:p-8 flex flex-col flex-grow space-y-4">
+                                                    <h4 className="package-card-title text-lg md:text-xl font-bold text-brand-text-light">{pkg.name}</h4>
                                                     {pkg.durationOptions?.length ? (
-                                                        <div className="my-2 md:my-3">
-                                                            <p className="package-duration-heading text-[10px] sm:text-xs font-semibold text-brand-text-secondary mb-1.5">Harga berdasarkan durasi</p>
-                                                            <div className="grid grid-cols-2 gap-1.5">
+                                                        <div className="space-y-2">
+                                                            <p className="package-duration-heading text-xs font-semibold text-brand-text-secondary">Pilihan Durasi</p>
+                                                            <div className="package-duration-row flex flex-nowrap gap-2 overflow-x-auto pb-1">
                                                                 {pkg.durationOptions.map(option => (
-                                                                    <div key={option.label} className="package-duration-option flex items-center justify-between gap-2 rounded-lg border border-brand-border bg-brand-bg/60 px-2 py-1.5 text-[10px] sm:text-xs">
-                                                                        <span className="package-duration-label font-medium text-brand-text-secondary">{option.label}{option.default ? ' · Default' : ''}</span>
+                                                                    <div key={option.label} className="package-duration-option flex items-center justify-between gap-3 rounded-xl border border-brand-border bg-brand-bg/50 px-3 py-2 text-xs shrink-0">
+                                                                        <span className="package-duration-label font-medium text-brand-text-secondary truncate">{option.label}{option.default ? ' · Default' : ''}</span>
                                                                         <span className="package-duration-price shrink-0 font-bold text-brand-text-light">{formatCurrency(option.price)}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <p className="text-xl md:text-2xl lg:text-3xl font-bold text-brand-text-light my-2 md:my-3">{formatCurrency(pkg.price)}</p>
+                                                        <p className="text-2xl md:text-3xl font-extrabold text-brand-text-light">{formatCurrency(pkg.price)}</p>
                                                     )}
-                                                    <div className="package-desc-text space-y-1 text-xs md:text-sm text-brand-text-secondary flex-grow">
-                                                        {/* Team lines separated */}
+                                                    <div className="package-desc-text space-y-2 text-xs md:text-sm text-brand-text-secondary flex-grow pt-2">
                                                         {pkg.photographers && (
-                                                            <p className="leading-snug">{pkg.photographers}</p>
+                                                            <div className="flex items-center gap-2"><CheckIcon className="w-4 h-4 text-brand-accent shrink-0" /><span>{pkg.photographers}</span></div>
                                                         )}
                                                         {pkg.videographers && (
-                                                            <p className="leading-snug">{pkg.videographers}</p>
+                                                            <div className="flex items-center gap-2"><CheckIcon className="w-4 h-4 text-brand-accent shrink-0" /><span>{pkg.videographers}</span></div>
                                                         )}
                                                         {pkg.digitalItems.length > 0 && pkg.digitalItems.map((item, i) => (
-                                                            <p key={`d-${i}`} className="leading-snug">{item}</p>
+                                                            <div key={`d-${i}`} className="flex items-center gap-2"><CheckIcon className="w-4 h-4 text-brand-accent shrink-0" /><span>{item}</span></div>
                                                         ))}
                                                         {pkg.physicalItems.length > 0 && pkg.physicalItems.map((item, i) => (
-                                                            <p key={`p-${i}`} className="leading-snug">{item.name}</p>
+                                                            <div key={`p-${i}`} className="flex items-center gap-2"><CheckIcon className="w-4 h-4 text-brand-accent shrink-0" /><span>{item.name}</span></div>
                                                         ))}
                                                     </div>
-                                                    <div className="mt-6 pt-4 border-t border-brand-border">
+                                                    <div className="pt-4 border-t border-brand-border mt-auto">
                                                         <button
                                                             type="button"
                                                             onClick={() => handleOpenBookingModal(pkg)}
                                                             className="package-booking-button button-primary w-full text-center"
-                                                            style={{
-                                                                fontSize: '1.25rem',
-                                                                fontWeight: 800,
-                                                                padding: '0.875rem 1.25rem',
-                                                                minHeight: '54px',
-                                                            }}
                                                         >
                                                             Booking Package Ini
                                                         </button>
@@ -806,12 +1043,14 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             ))}
                         </section>
 
-                        {addOns.length > 0 && (
+                        {visibleAddOns.length > 0 && (
                             <aside className="lg:col-span-1 lg:sticky lg:top-8 widget-animate" style={{ animationDelay: '500ms' }}>
                                 <div className="bg-brand-surface rounded-2xl shadow-lg border border-brand-border">
-                                    <h3 className="text-lg md:text-xl font-bold text-brand-text-light p-4 md:p-6">Tambahan Opsional</h3>
+                                    <h3 className="text-lg md:text-xl font-bold text-brand-text-light p-4 md:p-6">
+                                        Tambahan Opsional {selectedRegion ? `(${selectedRegion.toUpperCase()})` : ''}
+                                    </h3>
                                     <div className="border-t border-brand-border">
-                                        {addOns.map(addOn => (
+                                        {visibleAddOns.map(addOn => (
                                             <AddOnItem key={addOn.id} addOn={addOn} />
                                         ))}
                                     </div>
@@ -931,28 +1170,40 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     </footer>
 
                     {/* Pricelist PDF Download Button */}
-                    {userProfile.publicPageConfig?.pricelistPdfUrl && (
-                        <div className="fixed bottom-6 right-6 z-40">
-                            <button
-                                onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = userProfile.publicPageConfig.pricelistPdfUrl!;
-                                    link.download = 'pricelist.pdf';
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                }}
-                                className="flex items-center gap-2 px-4 py-3 bg-brand-accent hover:bg-brand-accent-hover text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
-                                title="Download Pricelist PDF"
-                            >
-                                <Download className="w-5 h-5" />
-                                <span className="font-semibold text-sm">Download Pricelist</span>
-                            </button>
-                        </div>
-                    )}
+                    {(() => {
+                        const regionPricelists = userProfile.publicPageConfig?.regionPricelists || [];
+                        const targetPricelist = selectedRegion
+                            ? regionPricelists.find(p => p.region.toLowerCase() === selectedRegion.toLowerCase())
+                            : regionPricelists.find(p => p.region.toLowerCase() === 'semua') || (regionPricelists.length > 0 ? regionPricelists[0] : null);
+
+                        if (!targetPricelist && !userProfile.publicPageConfig?.pricelistPdfUrl) return null;
+
+                        const pdfUrl = targetPricelist?.pdfUrl || userProfile.publicPageConfig?.pricelistPdfUrl;
+                        if (!pdfUrl) return null;
+
+                        return (
+                            <div className="fixed bottom-6 right-6 z-40">
+                                <button
+                                    onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = pdfUrl;
+                                        link.download = targetPricelist?.fileName || 'pricelist.pdf';
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-3 bg-brand-accent hover:bg-brand-accent-hover text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
+                                    title={`Download Pricelist ${targetPricelist?.title || ''}`}
+                                >
+                                    <Download className="w-5 h-5" />
+                                    <span className="font-semibold text-sm">{targetPricelist?.buttonLabel || 'Download Pricelist'}</span>
+                                </button>
+                            </div>
+                        );
+                    })()}
                 </div>
 
-                <Modal isOpen={bookingModal.isOpen} onClose={handleCloseBookingModal} title={`Booking: ${bookingModal.pkg?.name}`} size="4xl">
+                <Modal isOpen={bookingModal.isOpen} onClose={handleCloseBookingModal} title={`Booking: ${bookingModal.pkg?.name}`} size="5xl">
                     {isSubmitted ? (
                         <div className="text-center p-8">
                             <h3 className="text-2xl font-bold text-gradient">Terima Kasih!</h3>
@@ -968,10 +1219,18 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             <button onClick={handleCloseBookingModal} className="mt-4 button-secondary w-full max-w-xs mx-auto">Tutup</button>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4 form-compact form-compact--ios-scale">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
+                    <form onSubmit={handleSubmit} className="space-y-8 p-2 sm:p-4 form-compact form-compact--ios-scale">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                            {/* Column 1: Client Info & Main Package */}
+                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm">
+                                <div className="space-y-1">
+                                    <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
+                                        Informasi Anda & Acara Pernikahan
+                                    </h4>
+                                    <p className="text-xs text-brand-text-secondary">Lengkapi data diri dan detail acara Anda.</p>
+                                </div>
                                 <div className="space-y-4">
-                                    <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2">Informasi Anda & Acara Pernikahan</h4>
                                     <div className="input-group"><input type="text" id="clientName" name="clientName" value={formData.clientName} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="clientName" className="input-label">Nama Pengantin</label></div>
                                     <div className="input-group"><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="email" className="input-label">Email (Opsional)</label></div>
                                     <div className="input-group"><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="phone" className="input-label">Nomor WhatsApp</label></div>
@@ -979,95 +1238,216 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                     <div className="input-group">
                                         <input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " />
                                         <label htmlFor="date" className="input-label">Tanggal Acara Pernikahan (Opsional)</label>
-                                        {!formData.date && <p className="text-[10px] text-brand-text-secondary">Kosongkan jika tanggal acara belum ditentukan.</p>}
+                                        {!formData.date && <p className="text-[10px] text-brand-text-secondary mt-1">Kosongkan jika tanggal acara belum ditentukan.</p>}
                                         {formData.date && (
-                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: '' }))} className="mt-1 text-xs font-semibold text-[#5D87FF] hover:underline">
+                                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, date: '' }))} className="mt-1 text-xs font-semibold text-brand-accent hover:underline">
                                                 Kosongkan tanggal
                                             </button>
                                         )}
                                     </div>
                                     <div className="input-group"><input type="text" id="location" name="location" value={formData.location} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="location" className="input-label">Alamat Acara Pernikahan</label></div>
-                                    <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2 pt-4">Package & Pembayaran</h4>
-                                    <div className="p-4 bg-public-bg rounded-lg space-y-3">
-                                        {bookingModal.pkg && (() => {
-                                            const pkg = bookingModal.pkg;
-                                            const hasDurationOpts = pkg.durationOptions && pkg.durationOptions.length > 0;
-                                            const selectedOpt = hasDurationOpts
-                                                ? (pkg.durationOptions!.find(o => o.label === formData.durationSelection) || pkg.durationOptions!.find(o => o.default) || pkg.durationOptions![0])
-                                                : null;
-                                            const photographers = selectedOpt?.photographers || pkg.photographers;
-                                            const videographers = selectedOpt?.videographers || pkg.videographers;
-                                            const processingTime = selectedOpt?.processingTime || pkg.processingTime;
-                                            const digitalItems = (selectedOpt?.digitalItems?.filter(Boolean).length ? selectedOpt.digitalItems : pkg.digitalItems)?.filter(Boolean) || [];
-                                            const physicalItems = (selectedOpt?.physicalItems?.filter((p: { name?: string }) => p?.name).length ? selectedOpt.physicalItems : pkg.physicalItems)?.filter((p: { name?: string }) => p?.name) || [];
-                                            const hasAnyDetail = photographers || videographers || processingTime || digitalItems.length > 0 || physicalItems.length > 0;
-                                            return (
-                                                <div className="mb-3 p-3 border border-public-border bg-public-surface rounded-lg space-y-2">
-                                                    <p className="text-xs font-semibold text-public-accent">
-                                                        Detail Package: {pkg.name}
-                                                        {selectedOpt && hasDurationOpts && <span className="font-normal text-public-text-secondary"> — {selectedOpt.label}</span>}
-                                                    </p>
-                                                    {hasAnyDetail ? (
-                                                        <ul className="text-xs text-public-text-secondary space-y-1">
-                                                            {photographers && <li>• {photographers}</li>}
-                                                            {videographers && <li>• {videographers}</li>}
-                                                            {processingTime && <li>• Waktu pengerjaan: {processingTime}</li>}
-                                                            {digitalItems.map((item: string, i: number) => <li key={i}>• {item}</li>)}
-                                                            {physicalItems.map((item: { name: string }, i: number) => <li key={i}>• {item.name}</li>)}
-                                                        </ul>
-                                                    ) : (
-                                                        <p className="text-xs text-public-text-secondary italic">Pilih opsi Jam Kerja untuk melihat detail.</p>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-public-text-secondary">Package: {bookingModal.pkg?.name}</span>
-                                            <span className="text-public-text-primary font-semibold">
-                                                {(() => {
-                                                    if (!bookingModal.pkg) return formatCurrency(0);
-                                                    const opts = bookingModal.pkg.durationOptions;
-                                                    if (!opts || opts.length === 0) return formatCurrency(bookingModal.pkg.price);
-                                                    const selected = opts.find(o => o.label === formData.durationSelection) || opts.find(o => o.default) || opts[0];
-                                                    return formatCurrency(selected?.price ?? bookingModal.pkg.price);
-                                                })()}
-                                            </span>
-                                        </div>
-                                        {bookingModal.pkg?.durationOptions && bookingModal.pkg.durationOptions.length > 0 && (
-                                            <div className="mt-2">
-                                                <label className="text-xs font-semibold text-public-accent">Jam Kerja</label>
-                                                <p className="text-xs text-public-text-secondary mt-1 mb-2">Pilih durasi. Detail Package akan berubah sesuai pilihan.</p>
-                                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                    {bookingModal.pkg.durationOptions.map(opt => {
-                                                        const isSelected = formData.durationSelection === opt.label;
-                                                        return (
-                                                            <label key={opt.label} className={`flex min-h-[76px] cursor-pointer flex-col justify-between gap-2 rounded-xl border-2 p-3 transition-colors ${isSelected ? 'border-public-accent bg-public-accent/5 ring-2 ring-public-accent/15' : 'border-public-border bg-public-surface hover:border-public-accent/50'}`}>
-                                                                <span className="flex items-center justify-between gap-2 text-xs font-semibold text-public-text-primary">
-                                                                    {opt.label}
-                                                                    {opt.default && <span className="rounded-full bg-public-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase text-public-accent">Default</span>}
-                                                                </span>
-                                                                <span className="flex items-center justify-between gap-2">
-                                                                    <span className="text-[10px] font-medium text-public-text-secondary">Harga durasi</span>
-                                                                    <span className="text-base font-extrabold text-public-accent">{formatCurrency(opt.price)}</span>
-                                                                    <input type="radio" name="durationSelection" value={opt.label} checked={isSelected} onChange={handleFormChange} className="h-4 w-4 accent-[var(--public-accent)]" />
-                                                                </span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {formData.selectedAddOnIds.length > 0 && addOns.filter(a => formData.selectedAddOnIds.includes(a.id)).map(a => (
-                                            <div key={a.id} className="flex justify-between items-center text-sm"><span className="text-public-text-secondary pl-4">Add-on: {a.name}</span><span className="text-public-text-primary font-semibold">{formatCurrency(a.price)}</span></div>
-                                        ))}
-                                        {Number(formData.transportCost) > 0 && <div className="flex justify-between items-center text-sm"><span className="text-public-text-secondary">Fee Transport</span><span className="text-public-text-primary font-semibold">{formatCurrency(Number(formData.transportCost) || 0)}</span></div>}
-                                        {discountAmount > 0 && <div className="flex justify-between items-center text-sm"><span className="text-public-text-secondary">Diskon ({discountText})</span><span className="text-green-500 font-semibold">-{formatCurrency(discountAmount)}</span></div>}
-                                        <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-public-border"><span className="text-public-text-secondary">Total Biaya</span><span className="text-public-text-primary">{formatCurrency(totalProject)}</span></div>
-                                    </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2">Tambahan</h4>
-                                    <div className="input-group"><label className="input-label !static !-top-4 text-public-accent">Add-On Lainnya (Opsional)</label><div className="p-3 border border-public-border bg-public-bg rounded-lg space-y-2 mt-2">{addOns.map(addon => (<label key={addon.id} className="flex items-center justify-between p-1.5 rounded-md hover:bg-public-surface cursor-pointer"><span className="text-sm text-public-text-primary">{addon.name}</span><div className="flex items-center gap-2"><span className="text-sm text-public-text-secondary">{formatCurrency(addon.price)}</span><input type="checkbox" id={addon.id} name="addOns" checked={formData.selectedAddOnIds.includes(addon.id)} onChange={handleFormChange} className="h-4 w-4 rounded flex-shrink-0 text-brand-accent focus:ring-brand-accent transition" /></div></label>))}</div></div>
+
+                                <div className="pt-4 border-t border-brand-border space-y-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
+                                            Pilihan Package & Durasi
+                                        </h4>
+                                        <p className="text-xs text-brand-text-secondary">Detail paket utama yang dipilih.</p>
+                                    </div>
+
+                                    {bookingModal.pkg && (() => {
+                                        const pkg = bookingModal.pkg;
+                                        const hasDurationOpts = pkg.durationOptions && pkg.durationOptions.length > 0;
+                                        const selectedOpt = hasDurationOpts
+                                            ? (pkg.durationOptions!.find(o => o.label === formData.durationSelection) || pkg.durationOptions!.find(o => o.default) || pkg.durationOptions![0])
+                                            : null;
+                                        const photographers = selectedOpt?.photographers || pkg.photographers;
+                                        const videographers = selectedOpt?.videographers || pkg.videographers;
+                                        const processingTime = selectedOpt?.processingTime || pkg.processingTime;
+                                        const digitalItems = (selectedOpt?.digitalItems?.filter(Boolean).length ? selectedOpt.digitalItems : pkg.digitalItems)?.filter(Boolean) || [];
+                                        const physicalItems = (selectedOpt?.physicalItems?.filter((p: { name?: string }) => p?.name).length ? selectedOpt.physicalItems : pkg.physicalItems)?.filter((p: { name?: string }) => p?.name) || [];
+                                        const hasAnyDetail = photographers || videographers || processingTime || digitalItems.length > 0 || physicalItems.length > 0;
+                                        return (
+                                            <div className="p-4 border border-brand-border bg-brand-bg/50 rounded-2xl space-y-2.5">
+                                                <p className="text-xs font-bold text-brand-accent flex items-center justify-between">
+                                                    <span>{pkg.name}</span>
+                                                    {selectedOpt && hasDurationOpts && <span className="font-normal text-brand-text-secondary">({selectedOpt.label})</span>}
+                                                </p>
+                                                {hasAnyDetail ? (
+                                                    <ul className="text-xs text-brand-text-secondary space-y-1.5 pl-2">
+                                                        {photographers && <li className="flex items-center gap-2"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{photographers}</span></li>}
+                                                        {videographers && <li className="flex items-center gap-2"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{videographers}</span></li>}
+                                                        {processingTime && <li className="flex items-center gap-2"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>Pengerjaan: {processingTime}</span></li>}
+                                                        {digitalItems.map((item: string, i: number) => <li key={i} className="flex items-center gap-2"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{item}</span></li>)}
+                                                        {physicalItems.map((item: { name: string }, i: number) => <li key={i} className="flex items-center gap-2"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{item.name}</span></li>)}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-xs text-brand-text-secondary italic">Pilih opsi Jam Kerja untuk melihat detail.</p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {bookingModal.pkg?.durationOptions && bookingModal.pkg.durationOptions.length > 0 && (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-brand-text-light">Jam Kerja / Durasi</label>
+                                            <div className="package-duration-row flex flex-nowrap gap-2 overflow-x-auto pb-2">
+                                                {bookingModal.pkg.durationOptions.map(opt => {
+                                                    const isSelected = formData.durationSelection === opt.label;
+                                                    return (
+                                                        <label key={opt.label} className={`package-duration-card flex min-w-[150px] cursor-pointer flex-col justify-between gap-2 rounded-2xl border-2 p-3 transition-all shrink-0 ${isSelected ? 'border-brand-accent bg-brand-accent/5 shadow-sm' : 'border-brand-border bg-brand-surface hover:border-brand-accent/50'}`}>
+                                                            <span className="flex items-center justify-between gap-2 text-xs font-semibold text-brand-text-primary">
+                                                                {opt.label}
+                                                                {opt.default && <span className="rounded-full bg-brand-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase text-brand-accent">Default</span>}
+                                                            </span>
+                                                            <span className="flex items-center justify-between gap-2 pt-2 border-t border-brand-border/60">
+                                                                <span className="package-duration-price-value text-[10px] font-medium text-brand-text-secondary">{formatCurrency(opt.price)}</span>
+                                                                <input type="radio" name="durationSelection" value={opt.label} checked={isSelected} onChange={handleFormChange} className="h-4 w-4 accent-brand-accent" />
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Column 2: Optional Packages, Add-ons, Promo, Payment */}
+                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm">
+                                <div className="space-y-1">
+                                    <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
+                                        Paket Tambahan & Add-On
+                                    </h4>
+                                    <p className="text-xs text-brand-text-secondary">Pilih tambahan layanan jika diperlukan.</p>
+                                </div>
+
+                                {visiblePackages.filter(p => p.id !== bookingModal.pkg?.id).length > 0 && (
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-brand-text-light">Paket Tambahan (Opsional)</label>
+                                        <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+                                            {visiblePackages
+                                                .filter(p => p.id !== bookingModal.pkg?.id)
+                                                .map(pkg => {
+                                                    const isSelected = optionalPackages.some(op => op.id === pkg.id);
+                                                    const selectedOptional = optionalPackages.find(op => op.id === pkg.id);
+                                                    const hasDurationOpts = pkg.durationOptions && pkg.durationOptions.length > 0;
+                                                    const selectedOpt = hasDurationOpts
+                                                        ? (pkg.durationOptions!.find(o => o.label === selectedOptional?.selectedDuration) || pkg.durationOptions!.find(o => o.default) || pkg.durationOptions![0])
+                                                        : null;
+                                                    const photographers = selectedOpt?.photographers || pkg.photographers;
+                                                    const videographers = selectedOpt?.videographers || pkg.videographers;
+                                                    const processingTime = selectedOpt?.processingTime || pkg.processingTime;
+                                                    const digitalItems = (selectedOpt?.digitalItems?.filter(Boolean).length ? selectedOpt.digitalItems : pkg.digitalItems)?.filter(Boolean) || [];
+                                                    const physicalItems = (selectedOpt?.physicalItems?.filter((p: { name?: string }) => p?.name).length ? selectedOpt.physicalItems : pkg.physicalItems)?.filter((p: { name?: string }) => p?.name) || [];
+                                                    const hasAnyDetail = photographers || videographers || processingTime || digitalItems.length > 0 || physicalItems.length > 0;
+                                                    return (
+                                                        <div key={pkg.id} className="p-3.5 border border-brand-border bg-brand-bg/40 rounded-2xl space-y-2.5 text-xs">
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isSelected}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                const defaultDuration = pkg.durationOptions && pkg.durationOptions.length > 0
+                                                                                    ? (pkg.durationOptions.find(o => o.default) || pkg.durationOptions[0])
+                                                                                    : undefined;
+                                                                                setOptionalPackages([...optionalPackages, { 
+                                                                                    id: pkg.id, 
+                                                                                    name: pkg.name, 
+                                                                                    price: defaultDuration?.price ?? pkg.price,
+                                                                                    selectedDuration: defaultDuration?.label
+                                                                                }]);
+                                                                            } else {
+                                                                                setOptionalPackages(optionalPackages.filter(op => op.id !== pkg.id));
+                                                                            }
+                                                                        }}
+                                                                        className="h-4 w-4 rounded accent-brand-accent"
+                                                                    />
+                                                                    <span className="font-bold text-brand-text-light">{pkg.name}</span>
+                                                                </label>
+                                                                <span className="font-extrabold text-brand-accent">
+                                                                    {formatCurrency(selectedOptional?.price ?? (hasDurationOpts ? (pkg.durationOptions!.find(o => o.default) || pkg.durationOptions![0])!.price : pkg.price))}
+                                                                </span>
+                                                            </div>
+                                                            {isSelected && (
+                                                                <div className="pt-3 pl-6 space-y-2.5 border-t border-brand-border/60">
+                                                                    {hasAnyDetail ? (
+                                                                        <ul className="text-[11px] text-brand-text-secondary space-y-1.5">
+                                                                            {photographers && <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{photographers}</span></li>}
+                                                                            {videographers && <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{videographers}</span></li>}
+                                                                            {processingTime && <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>Pengerjaan: {processingTime}</span></li>}
+                                                                            {digitalItems.map((item: string, i: number) => <li key={i} className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{item}</span></li>)}
+                                                                            {physicalItems.map((item: { name: string }, i: number) => <li key={i} className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-brand-accent shrink-0" /><span>{item.name}</span></li>)}
+                                                                        </ul>
+                                                                    ) : pkg.processingTime ? (
+                                                                        <p className="text-[11px] text-brand-text-secondary whitespace-pre-wrap">Pengerjaan: {pkg.processingTime}</p>
+                                                                    ) : null}
+
+                                                                    {hasDurationOpts && (
+                                                                        <div className="pt-2">
+                                                                            <p className="text-[10px] font-semibold text-brand-text-secondary mb-1.5">Pilih Jam Kerja Tambahan:</p>
+                                                                            <div className="package-duration-row flex flex-nowrap gap-2 overflow-x-auto pb-1">
+                                                                                {pkg.durationOptions!.map(opt => {
+                                                                                    const isOptSelected = selectedOptional?.selectedDuration === opt.label;
+                                                                                    return (
+                                                                                        <label key={opt.label} className={`package-duration-card flex min-w-[130px] cursor-pointer flex-col justify-between gap-1 rounded-xl border p-2 text-[10px] shrink-0 ${isOptSelected ? 'border-brand-accent bg-brand-accent/10 font-bold' : 'border-brand-border bg-brand-surface'}`}>
+                                                                                            <span className="flex items-center justify-between">
+                                                                                                <span>{opt.label}</span>
+                                                                                                <input 
+                                                                                                    type="radio" 
+                                                                                                    name={`duration-${pkg.id}`} 
+                                                                                                    checked={isOptSelected}
+                                                                                                    onChange={() => {
+                                                                                                        setOptionalPackages(optionalPackages.map(op => 
+                                                                                                            op.id === pkg.id 
+                                                                                                            ? { ...op, price: Number(opt.price), selectedDuration: opt.label }
+                                                                                                            : op
+                                                                                                        ));
+                                                                                                    }}
+                                                                                                    className="h-3 w-3 accent-brand-accent"
+                                                                                                />
+                                                                                            </span>
+                                                                                            <span className="text-brand-accent font-bold">{formatCurrency(opt.price)}</span>
+                                                                                        </label>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {visibleAddOns.length > 0 && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-brand-text-light">
+                                            Add-On Lainnya {selectedRegion ? `(Wilayah ${selectedRegion.toUpperCase()})` : ''}
+                                        </label>
+                                        <div className="p-3 border border-brand-border bg-brand-bg/40 rounded-2xl space-y-2 max-h-[600px] overflow-y-auto">
+                                            {visibleAddOns.map(addon => (
+                                                <label key={addon.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-brand-surface cursor-pointer text-xs transition-colors">
+                                                    <span className="font-medium text-brand-text-primary">{addon.name}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-semibold text-brand-text-secondary">{formatCurrency(addon.price)}</span>
+                                                        <input type="checkbox" id={addon.id} name="addOns" checked={formData.selectedAddOnIds.includes(addon.id)} onChange={handleFormChange} className="h-4 w-4 rounded accent-brand-accent" />
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="input-group">
                                         <input type="text" id="promoCode" name="promoCode" value={formData.promoCode} onChange={handleFormChange} className="input-field" placeholder=" " />
                                         <label htmlFor="promoCode" className="input-label">Kode Promo (Opsional)</label>
@@ -1084,53 +1464,98 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                         />
                                         <label htmlFor="transportCost" className="input-label">Fee Transport (Opsional)</label>
                                     </div>
-                                    <div className="p-4 bg-public-bg rounded-lg">
-                                        <p className="text-sm text-public-text-secondary">Silakan transfer Uang Muka (DP) ke rekening:</p>
-                                        <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border mt-2">{userProfile.bankAccount}</p>
-                                        <div className="mt-3">
-                                            <div className="input-group !mt-0">
-                                                <RupiahInput
-                                                    id="dp"
-                                                    name="dp"
-                                                    value={String(formData.dp ?? '')}
-                                                    onChange={(raw) => setFormData(prev => ({ ...prev, dp: raw }))}
-                                                    className="input-field text-right"
-                                                    placeholder=" "
-                                                />
-                                                <label htmlFor="dp" className="input-label">Jumlah DP</label>
-                                                <p className="text-xs text-public-text-secondary mt-1 text-right">Saran DP (30%): {formatCurrency(suggestedDp)}</p>
+                                </div>
+
+                                {/* Cost Breakdown & DP Payment Box */}
+                                <div className="p-5 bg-brand-bg/60 border border-brand-border rounded-2xl space-y-4">
+                                    <h4 className="text-xs font-bold text-brand-text-light uppercase tracking-wider">Rincian Pembayaran</h4>
+                                    <div className="space-y-2 text-xs">
+                                        <div className="flex justify-between items-center text-brand-text-secondary">
+                                            <span>Package Utama</span>
+                                            <span className="font-semibold text-brand-text-primary">
+                                                {(() => {
+                                                    if (!bookingModal.pkg) return formatCurrency(0);
+                                                    const opts = bookingModal.pkg.durationOptions;
+                                                    if (!opts || opts.length === 0) return formatCurrency(bookingModal.pkg.price);
+                                                    const selected = opts.find(o => o.label === formData.durationSelection) || opts.find(o => o.default) || opts[0];
+                                                    return formatCurrency(selected?.price ?? bookingModal.pkg.price);
+                                                })()}
+                                            </span>
+                                        </div>
+                                        {optionalPackages.map(op => (
+                                            <div key={op.id} className="flex justify-between items-center text-brand-text-secondary pl-2">
+                                                <span>+ Tambahan: {op.name}</span>
+                                                <span className="font-semibold text-brand-text-primary">{formatCurrency(op.price)}</span>
                                             </div>
+                                        ))}
+                                        {formData.selectedAddOnIds.length > 0 && visibleAddOns.filter(a => formData.selectedAddOnIds.includes(a.id)).map(a => (
+                                            <div key={a.id} className="flex justify-between items-center text-brand-text-secondary pl-2">
+                                                <span>+ Add-on: {a.name}</span>
+                                                <span className="font-semibold text-brand-text-primary">{formatCurrency(a.price)}</span>
+                                            </div>
+                                        ))}
+                                        {Number(formData.transportCost) > 0 && (
+                                            <div className="flex justify-between items-center text-brand-text-secondary pl-2">
+                                                <span>+ Fee Transport</span>
+                                                <span className="font-semibold text-brand-text-primary">{formatCurrency(Number(formData.transportCost) || 0)}</span>
+                                            </div>
+                                        )}
+                                        {discountAmount > 0 && (
+                                            <div className="flex justify-between items-center text-green-600 pl-2">
+                                                <span>- Diskon ({discountText})</span>
+                                                <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center font-extrabold text-base pt-3 border-t border-brand-border text-brand-text-light">
+                                            <span>Total Biaya</span>
+                                            <span className="text-brand-accent text-lg">{formatCurrency(totalProject)}</span>
                                         </div>
                                     </div>
-                                    <div className="input-group">
-                                        <label htmlFor="dpPaymentProof" className="input-label !static !-top-4 text-public-accent">Unggah Bukti Transfer DP</label>
-                                        <div className="mt-2 flex justify-center rounded-lg border border-dashed border-public-border px-6 py-10">
-                                            <div className="text-center">
-                                                <UploadIcon className="mx-auto h-12 w-12 text-public-text-secondary" />
-                                                <div className="mt-4 flex text-sm leading-6 text-public-text-secondary">
-                                                    <label htmlFor="dpPaymentProof" className="relative cursor-pointer rounded-md bg-public-surface font-semibold text-public-accent focus-within:outline-none hover:text-public-accent-hover">
-                                                        <span>Unggah file</span>
-                                                        <input id="dpPaymentProof" name="dpPaymentProof" type="file" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/jpg, application/pdf" />
-                                                    </label>
-                                                    <p className="pl-1">atau seret dan lepas</p>
-                                                </div>
-                                                <p className="text-xs leading-5 text-public-text-secondary">PNG, JPG, PDF hingga 10MB</p>
-                                            </div>
+
+                                    <div className="pt-3 border-t border-brand-border space-y-3">
+                                        <div className="text-xs space-y-1">
+                                            <p className="text-brand-text-secondary">Silakan transfer Uang Muka (DP) ke rekening:</p>
+                                            <p className="font-bold text-brand-text-light p-2 bg-brand-surface rounded-xl border border-brand-border text-center tracking-wide">{userProfile.bankAccount}</p>
                                         </div>
-                                        {paymentProof && <div className="mt-2 text-sm text-public-text-primary bg-public-bg p-2 rounded-md">File terpilih: <span className="font-semibold">{paymentProof.name}</span></div>}
+                                        <div className="input-group !mt-0">
+                                            <RupiahInput
+                                                id="dp"
+                                                name="dp"
+                                                value={String(formData.dp ?? '')}
+                                                onChange={(raw) => setFormData(prev => ({ ...prev, dp: raw }))}
+                                                className="input-field text-right font-bold"
+                                                placeholder=" "
+                                            />
+                                            <label htmlFor="dp" className="input-label">Jumlah DP</label>
+                                            <p className="text-[11px] text-brand-text-secondary mt-1 text-right">Saran DP (30%): <strong className="text-brand-accent">{formatCurrency(suggestedDp)}</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="dpPaymentProof" className="text-xs font-bold text-brand-text-light block">Unggah Bukti Transfer DP</label>
+                                    <div className="flex justify-center rounded-2xl border border-dashed border-brand-border bg-brand-bg/40 px-6 py-8 hover:bg-brand-bg/80 transition-colors">
+                                        <div className="text-center">
+                                            <UploadIcon className="mx-auto h-10 w-10 text-brand-text-secondary mb-2" />
+                                            <div className="flex text-xs leading-6 text-brand-text-secondary">
+                                                <label htmlFor="dpPaymentProof" className="relative cursor-pointer rounded-md bg-brand-surface px-2 py-1 font-semibold text-brand-accent border border-brand-border hover:bg-brand-surface/80">
+                                                    <span>Pilih file</span>
+                                                    <input id="dpPaymentProof" name="dpPaymentProof" type="file" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/jpg, application/pdf" />
+                                                </label>
+                                                <p className="pl-2 pt-1">atau seret dan lepas</p>
+                                            </div>
+                                            <p className="text-[11px] text-brand-text-secondary mt-1">PNG, JPG, PDF hingga 10MB {paymentProof ? `(Dipilih: ${paymentProof.name})` : ''}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-3 pt-4 border-t border-public-border">
-                                <button type="button" onClick={handleCloseBookingModal} className="button-secondary">Batal</button>
-                                <button type="submit" disabled={isSubmitting} className="button-primary">{isSubmitting ? 'Mengirim...' : 'Kirim Booking'}</button>
-                            </div>
-                            <div className="mt-6 flex justify-center items-center gap-4">
-                                <button type="button" onClick={() => setIsTermsModalOpen(true)} className="text-xs font-semibold text-public-accent hover:underline">
-                                    Lihat Syarat & Ketentuan Umum
-                                </button>
-                            </div>
-                        </form>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-6 border-t border-brand-border">
+                            <button type="button" onClick={handleCloseBookingModal} className="button-secondary px-6">Batal</button>
+                            <button type="submit" disabled={isSubmitting} className="button-primary px-8">{isSubmitting ? 'Mengirim...' : 'Kirim Booking'}</button>
+                        </div>
+                    </form>
                     )}
                 </Modal>
                 <Modal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} title="Syarat & Ketentuan Umum">

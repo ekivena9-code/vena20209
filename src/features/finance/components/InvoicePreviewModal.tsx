@@ -70,7 +70,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   profile,
   isEditMode = false,
 }) => {
-  const companyName = profile?.companyName || 'Weddfin';
+  const companyName = profile?.companyName || 'Vena Pictures';
   const companyAddress = profile?.address || 'Jl. Fotografi Studio No. 1, Jakarta';
   const companyPhone = profile?.phone || profile?.email || '';
   const companyEmail = profile?.email || '';

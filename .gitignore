@@ -57,6 +57,8 @@ DerivedData
 *.keystore
 *.jks
 local.properties
+/android/key
+/android/app/release/
 
 # Codemagic
 codemagic.yaml.enc

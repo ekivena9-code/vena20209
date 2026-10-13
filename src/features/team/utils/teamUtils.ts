@@ -18,6 +18,20 @@ export const formatDate = (dateString: string): string => {
     });
 };
 
+export const dedupeCurrentTeamPayments = (
+    payments: TeamProjectPayment[],
+): TeamProjectPayment[] => {
+    const currentByAssignment = new Map<string, TeamProjectPayment>();
+    for (const payment of payments) {
+        const key = JSON.stringify([payment.projectId, payment.teamMemberId]);
+        const current = currentByAssignment.get(key);
+        if (!current || (current.status === 'Paid' && payment.status === 'Unpaid')) {
+            currentByAssignment.set(key, payment);
+        }
+    }
+    return Array.from(currentByAssignment.values());
+};
+
 export const getStatusClass = (status: 'Paid' | 'Unpaid'): string =>
     status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
 
@@ -50,7 +64,7 @@ export const downloadTeamCSV = (
         'Rating',
     ];
     const data = members.map(member => {
-        const unpaidFee = teamProjectPayments
+        const unpaidFee = dedupeCurrentTeamPayments(teamProjectPayments)
             .filter(p => p.teamMemberId === member.id && p.status === 'Unpaid')
             .reduce((sum, p) => sum + p.fee, 0);
         return [

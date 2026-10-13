@@ -111,6 +111,28 @@ const PORTAL_STYLES = `
   .portal-animate-3 { animation-delay:0.15s; }
   .portal-animate-4 { animation-delay:0.20s; }
   .portal-animate-5 { animation-delay:0.25s; }
+
+  @media (max-width: 640px) {
+    .portal-page [class*="text-[8px]"] {
+      font-size: 0.65rem !important;
+      line-height: 1.25 !important;
+    }
+
+    .portal-page [class*="text-[9px]"] {
+      font-size: 0.7rem !important;
+      line-height: 1.3 !important;
+    }
+
+    .portal-page [class*="text-[10px]"] {
+      font-size: 0.76rem !important;
+      line-height: 1.35 !important;
+    }
+
+    .portal-page .text-xs {
+      font-size: 0.8rem !important;
+      line-height: 1.4 !important;
+    }
+  }
 `;
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -200,8 +222,8 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
     ...(!isVendorClient ? [{ key: 'beranda', label: 'Beranda', active: 'tab-active-mono' }] : []),
     { key: 'proyek', label: 'Acara Saya', active: 'tab-active-mono' },
     { key: 'meeting', label: 'Jadwal Meeting', active: 'tab-active-mono' },
-    { key: 'dokumen', label: 'File', active: 'tab-active-mono' },
-    ...(!isVendorClient ? [{ key: 'keuangan', label: 'Keuangan', active: 'tab-active-mono' }] : []),
+    { key: 'dokumen', label: 'Link File', active: 'tab-active-mono' },
+    ...(!isVendorClient ? [{ key: 'keuangan', label: 'Invoice', active: 'tab-active-mono' }] : []),
     { key: 'testimoni', label: 'Testimoni', active: 'tab-active-mono' },
   ];
 
@@ -975,7 +997,7 @@ const GalleryTab: React.FC<{ projects: Project[]; packages?: Package[] }> = ({ p
                 Semua file tersimpan aman di Google Drive dan dapat diakses langsung tanpa batas waktu.
               </span>
               <span className="text-zinc-400 text-[10px]">
-                Sinkronisasi Cloud Weddfin
+                Sinkronisasi Cloud Vena Pictures
               </span>
             </div>
           </div>
