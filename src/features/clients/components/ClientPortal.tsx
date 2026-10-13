@@ -21,6 +21,10 @@ import { supabase } from '../../../lib/supabaseClient';
 import { toPublicNameSlug } from '../../../utils/publicRouting';
 import HelpBox from '../../../shared/ui/HelpBox';
 import InvoiceDocument from '../../finance/components/InvoiceDocument';
+import PackageTermsDisplay from '../../packages/components/PackageTermsDisplay';
+import { getPackageTerms } from '../../packages/packageTerms';
+import WorkflowDisplay from '../../packages/components/WorkflowDisplay';
+import { getWorkflows } from '../../packages/workflows';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -224,6 +228,8 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
     { key: 'meeting', label: 'Jadwal Meeting', active: 'tab-active-mono' },
     { key: 'dokumen', label: 'Link File', active: 'tab-active-mono' },
     ...(!isVendorClient ? [{ key: 'keuangan', label: 'Invoice', active: 'tab-active-mono' }] : []),
+    ...(!isVendorClient ? [{ key: 'syarat-paket', label: 'Syarat Paket', active: 'tab-active-mono' }] : []),
+    ...(!isVendorClient ? [{ key: 'workflow', label: 'Workflow', active: 'tab-active-mono' }] : []),
     { key: 'testimoni', label: 'Testimoni', active: 'tab-active-mono' },
   ];
 
@@ -319,6 +325,20 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
         {activeTab === 'meeting' && <MeetingsTab projects={clientProjects} />}
         {activeTab === 'dokumen' && <GalleryTab projects={clientProjects} packages={packages} />}
         {activeTab === 'keuangan' && !isVendorClient && <FinanceTab projects={clientProjects} transactions={transactions} profile={profile} packages={packages} client={client} onViewDocument={setViewingDocument} />}
+        {activeTab === 'syarat-paket' && !isVendorClient && (
+          <PackageTermsDisplay
+            terms={getPackageTerms(profile.publicPageConfig?.packageTerms)}
+            packageName={Array.from(new Set(clientProjects.map(project =>
+              packages.find(pkg => pkg.id === project.packageId)?.name || project.packageName,
+            ).filter((name): name is string => !!name))).join(', ') || undefined}
+          />
+        )}
+        {activeTab === 'workflow' && !isVendorClient && (
+          <WorkflowDisplay
+            workflows={getWorkflows(profile.publicPageConfig)}
+            projectName={clientProjects.map(project => project.projectName).filter(Boolean).join(', ') || undefined}
+          />
+        )}
         {activeTab === 'testimoni' && <FeedbackTab client={client} setClientFeedback={setClientFeedback} showNotification={showNotification} />}
       </div>
 

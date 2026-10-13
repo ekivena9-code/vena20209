@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WorkflowItem, Profile } from '../../../types';
+import { DEFAULT_WORKFLOWS } from '../workflows';
 import {
     List,
     X,
@@ -14,30 +15,7 @@ import {
     ArrowRight
 } from 'lucide-react';
 
-export const DEFAULT_WORKFLOWS: WorkflowItem[] = [
-    {
-        id: 'wf-wedding',
-        title: 'Wedding Timeline',
-        timeline: [
-            'Konsep Acara Pernikahan / Awal → H-90',
-            'Pemilihan Vendor / Detail → H-60',
-            'Persiapan Final (Technical Meeting) → H-14',
-            'Pelaksanaan Acara Pernikahan → Hari H',
-            'Penyelesaian / Review Akhir → H+7',
-            'Serah Terima Dokumentasi / Laporan → H+30'
-        ]
-    },
-    {
-        id: 'wf-small-event',
-        title: 'Event / Acara Pernikahan Kecil Timeline',
-        timeline: [
-            'Konsep / Kesepakatan Awal → H-30',
-            'Persiapan Final → H-7',
-            'Pelaksanaan Acara Pernikahan → Hari H',
-            'Penyelesaian Layanan / Laporan → H+14'
-        ]
-    }
-];
+export { DEFAULT_WORKFLOWS } from '../workflows';
 
 interface WorkflowModalProps {
     isOpen: boolean;

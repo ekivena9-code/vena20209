@@ -255,7 +255,8 @@ async function linkProjectAddOns(projectId: string, addOns: Array<{ id?: string;
 export async function updateProject(projectId: string, input: UpdateProjectInput): Promise<Project> {
   // Resolve package id if packageName provided, preserving explicitly provided packageId if not matched
   let packageId: string | undefined = input.packageId;
-  if (input.packageName) {
+  const isUuid = (v?: string) => !!v && /^[0-9a-fA-F-]{36}$/.test(v);
+  if (input.packageName && !isUuid(packageId)) {
     const { data: pkg, error: pkgErr } = await supabase
       .from(PACKAGES)
       .select('id')
@@ -265,7 +266,6 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
       packageId = pkg.id;
     }
   }
-  const isUuid = (v?: string) => !!v && /^[0-9a-fA-F-]{36}$/.test(v);
   const promoCodeId = input.promoCodeId && isUuid(input.promoCodeId) ? input.promoCodeId : undefined;
   const validClientId = isUuid(input.clientId) ? input.clientId : null;
   const validPackageId = isUuid(packageId) ? packageId : null;
@@ -331,10 +331,11 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
     payload.unit_price = (input as any).unitPrice;
   }
 
-  if (Object.keys(payload).length > 0) {
-    const { error: updErr } = await supabase.from(PROJECTS).update(payload).eq('id', projectId);
-    if (updErr) throw updErr;
-  }
+  const updateResult = Object.keys(payload).length > 0
+    ? await supabase.from(PROJECTS).update(payload).eq('id', projectId).select('*').single()
+    : await supabase.from(PROJECTS).select('*').eq('id', projectId).single();
+  const { data, error: updateError } = updateResult;
+  if (updateError) throw updateError;
 
   // Sync add-ons
   if (input.addOns) {
@@ -344,9 +345,7 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
     await linkProjectAddOns(projectId, input.addOns);
   }
 
-  // Return updated project
-  const { data, error } = await supabase.from(PROJECTS).select('*').eq('id', projectId).single();
-  if (error) throw error;
+  // The update response already contains the saved row; avoid an extra read.
   const normalized = normalizeProject(data);
   if (input.addOns) {
     normalized.addOns = input.addOns.map(a => ({
@@ -373,16 +372,17 @@ export async function deleteProject(projectId: string): Promise<boolean> {
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   // Resolve package_id by package name (optional)
-  let packageId: string | null = null;
   // Sanitize promo code id: UI may pass local id, ensure UUID or null
   const isUuid = (v?: string) => !!v && /^[0-9a-fA-F-]{36}$/.test(v);
   const promoCodeId = isUuid(input.promoCodeId as any) ? (input.promoCodeId as any) : null;
-  if (input.packageName) {
-    const { data: pkg } = await supabase
+  let packageId: string | null = isUuid(input.packageId) ? input.packageId! : null;
+  if (input.packageName && !packageId) {
+    const { data: pkg, error: packageError } = await supabase
       .from(PACKAGES)
       .select('id')
       .eq('name', input.packageName)
       .maybeSingle();
+    if (packageError) throw packageError;
     packageId = pkg?.id ?? null;
   }
 

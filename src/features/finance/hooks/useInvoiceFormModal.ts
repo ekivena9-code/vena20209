@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Project, Client, Package, PaymentStatus, TransactionType, Transaction } from '../../../types';
 import { InvoiceFormData, InvoiceLineItem } from '../types/invoiceForm';
-import { createProject, updateProject, getProjectWithRelations, UpdateProjectInput, CreateProjectInput } from '../../../services/projects';
+import { createProject, updateProject, UpdateProjectInput, CreateProjectInput } from '../../../services/projects';
 import { createClient } from '../../../services/clients';
 import { createTransaction } from '../../../services/transactions';
 
@@ -339,6 +339,7 @@ export function useInvoiceFormModal({
     try {
       let finalClientId = formData.clientId;
       let finalClientName = formData.clientName.trim();
+      let createdClientForCache: Client | undefined;
 
       // 1. If new client requested, persist client record first
       if (formData.isNewClient) {
@@ -356,6 +357,7 @@ export function useInvoiceFormModal({
         };
 
         const createdClient = await createClient(newClientPayload);
+        createdClientForCache = createdClient;
         finalClientId = createdClient.id;
         finalClientName = createdClient.name;
       }
@@ -459,28 +461,14 @@ export function useInvoiceFormModal({
         projectDataPayload.paymentStatus = recalcStatus;
 
         const updated = await updateProject(formData.id, projectDataPayload);
-
-        // Fetch full project with relations to ensure team assignments and checklists are retained
-        try {
-          const fullProj = await getProjectWithRelations(formData.id);
-          savedProject = fullProj || {
-            ...projectToEdit,
-            ...updated,
-            amountPaid: actualPaid,
-            paymentStatus: recalcStatus,
-            team: projectToEdit?.team?.length ? projectToEdit.team : (updated.team || []),
-            weddingDayChecklist: projectToEdit?.weddingDayChecklist || updated.weddingDayChecklist,
-          };
-        } catch {
-          savedProject = {
-            ...projectToEdit,
-            ...updated,
-            amountPaid: actualPaid,
-            paymentStatus: recalcStatus,
-            team: projectToEdit?.team?.length ? projectToEdit.team : (updated.team || []),
-            weddingDayChecklist: projectToEdit?.weddingDayChecklist || updated.weddingDayChecklist,
-          };
-        }
+        savedProject = {
+          ...projectToEdit,
+          ...updated,
+          amountPaid: actualPaid,
+          paymentStatus: recalcStatus,
+          team: projectToEdit?.team || updated.team,
+          weddingDayChecklist: projectToEdit?.weddingDayChecklist || updated.weddingDayChecklist,
+        };
 
         // RULE 3, 10, 11: Do NOT create any transaction when saving an invoice edit.
         // Transaction creation only happens via a dedicated payment flow.
@@ -488,7 +476,11 @@ export function useInvoiceFormModal({
         showNotification('Invoice berhasil diperbarui!');
       } else {
         // ── CREATE MODE ───────────────────────────────────────────────────
-        savedProject = await createProject(projectDataPayload);
+        const createdProject = await createProject(projectDataPayload);
+        savedProject = {
+          ...createdProject,
+          addOns: updatedAddOns,
+        };
 
         // RULE 4, 9: If initial amountPaid is entered on a NEW invoice, record one income transaction.
         if (formData.amountPaid > 0) {
@@ -510,15 +502,27 @@ export function useInvoiceFormModal({
         showNotification('Invoice berhasil dibuat!');
       }
 
-      // RULE 13: Invalidate React Query caches so all views reflect the latest data
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: ['projects'] }),
-        queryClient.invalidateQueries({ queryKey: ['transactions'] }),
-        queryClient.invalidateQueries({ queryKey: ['clients'] }),
-        queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-        queryClient.invalidateQueries({ queryKey: ['finance'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-      ]);
+      queryClient.setQueryData<Project[]>(['projects'], (current) => {
+        if (!current) return current;
+        return formData.id
+          ? current.map((project) => project.id === savedProject.id ? savedProject : project)
+          : [savedProject, ...current.filter((project) => project.id !== savedProject.id)];
+      });
+      const createdClient = createdClientForCache;
+      if (createdClient) {
+        queryClient.setQueryData<Client[]>(['clients'], (current) =>
+          current ? [createdClient, ...current.filter((client) => client.id !== createdClient.id)] : current
+        );
+      }
+      const savedTransaction = recordedTx;
+      if (savedTransaction) {
+        queryClient.setQueryData<Transaction[]>(['transactions'], (current) =>
+          current ? [savedTransaction, ...current.filter((transaction) => transaction.id !== savedTransaction.id)] : current
+        );
+      }
+
+      // Derived totals refresh in the background; do not hold the save button open.
+      void queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
 
       onSuccess(savedProject, recordedTx);
     } catch (err: any) {

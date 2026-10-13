@@ -109,13 +109,10 @@ export function useProjectOperations({
 
                 setProjects(prev => prev.map(p => p.id === projectId ? updated : p));
 
-                try {
-                    await syncClientStatusFromProjects(projectToUpdate.clientId);
-                } catch (e) {
-                    console.warn('[Projects] Failed to sync client status from projects:', e);
-                }
-
                 showNotification(`Status berhasil diubah ke "${newStatus}"`);
+                void syncClientStatusFromProjects(projectToUpdate.clientId).catch(e => {
+                    console.warn('[Projects] Failed to sync client status from projects:', e);
+                });
             } catch (error) {
                 console.error('Drag drop status update error:', error);
                 showNotification('Gagal mengubah status');
@@ -236,13 +233,10 @@ export function useProjectOperations({
 
             setProjects(prev => prev.map(p => p.id === projectId ? updated : p));
 
-            try {
-                await syncClientStatusFromProjects(project.clientId);
-            } catch (e) {
-                console.warn('[Projects] Failed to sync client status from projects:', e);
-            }
-
             showNotification(`Status berhasil diubah ke "${newStatus}"`);
+            void syncClientStatusFromProjects(project.clientId).catch(e => {
+                console.warn('[Projects] Failed to sync client status from projects:', e);
+            });
 
             if (notifyClient) {
                 console.log('Notifying client about status change:', newStatus);

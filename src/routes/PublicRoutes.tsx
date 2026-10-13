@@ -239,6 +239,8 @@ export const PublicRoutes: React.FC<PublicRoutesProps> = ({
     return (
       <PublicPackages
         userProfile={profile}
+        initialPackages={packages}
+        initialAddOns={addOns}
         showNotification={showNotification}
         setClients={setClients}
         setProjects={setProjects}

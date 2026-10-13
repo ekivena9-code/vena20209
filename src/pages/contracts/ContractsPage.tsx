@@ -345,13 +345,12 @@ const Contracts: React.FC<ContractsProps> = ({ contracts, setContracts, clients,
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isSubmitting) return;
-        setIsSubmitting(true);
-        
         if (!selectedProjectId) {
             showNotification('Harap pilih acara terlebih dahulu.');
             return;
         }
 
+        setIsSubmitting(true);
         try {
             if (modalMode === 'add') {
                 const contractCount = contracts.length + 1;

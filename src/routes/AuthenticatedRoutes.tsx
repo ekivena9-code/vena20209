@@ -500,6 +500,7 @@ export const AuthenticatedRoutes: React.FC<AuthenticatedRoutesProps> = ({
             setAddOns={setAddOns}
             projects={projects}
             profile={profile}
+            setProfile={handleSetProfile}
             showNotification={showNotification}
             initialAction={initialAction}
             setInitialAction={setInitialAction}

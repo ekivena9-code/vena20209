@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode, REGIONS, WorkflowItem, PackageTermItem } from '../../../types';
+import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode, REGIONS } from '../../../types';
 import Modal from '../../../shared/ui/Modal';
 import { CheckIcon, CameraIcon, WhatsappIcon, cleanPhoneNumber } from '../../../constants';
 import { listPackages } from '../../../services/packages';
 import { listAddOns } from '../../../services/addOns';
-import { getProfile } from '../../../services/profile';
 import { createClient } from '../../../services/clients';
 import { createProject } from '../../../services/projects';
 import { createLead as createLeadRow, updateLead as updateLeadRow } from '../../../services/leads';
@@ -13,6 +12,8 @@ import { createTransaction } from '../../../services/transactions';
 import RupiahInput from '../../../shared/form/RupiahInput';
 import { Download, FileText, MapPin, CheckCircle2, ListOrdered, Sparkles, ShieldCheck, Plus, Trash2 } from 'lucide-react';
 import { toPublicNameSlug } from '../../../utils/publicRouting';
+import { getPackageTerms } from '../../packages/packageTerms';
+import { getWorkflows } from '../../packages/workflows';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -39,6 +40,8 @@ const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface PublicPackagesProps {
     userProfile: Profile;
+    initialPackages?: Package[];
+    initialAddOns?: AddOn[];
     showNotification: (message: string) => void;
     setClients: React.Dispatch<React.SetStateAction<Client[]>>;
     setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
@@ -69,28 +72,24 @@ const initialForm = {
 
 
 
-const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUserProfile, showNotification, setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = [], projects = [], promoCodes = [], setPromoCodes, leads = [] }) => {
-    const [packages, setPackages] = useState<Package[]>([]);
-    const [addOns, setAddOns] = useState<AddOn[]>([]);
+const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUserProfile, initialPackages, initialAddOns, showNotification, setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = [], projects = [], promoCodes = [], setPromoCodes, leads = [] }) => {
+    const [packages, setPackages] = useState<Package[]>(initialPackages ?? []);
+    const [addOns, setAddOns] = useState<AddOn[]>(initialAddOns ?? []);
     const [userProfile, setUserProfile] = useState<Profile>(initialUserProfile);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(!initialPackages || !initialAddOns);
     const [error, setError] = useState<string | null>(null);
-    const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-
-    // Extract region and lead identifiers from URL (?region=... & lid=... or leadId=...)
-    useEffect(() => {
+    const [selectedRegion] = useState<string | null>(() => {
         try {
             const hash = window.location.hash;
             const hashQuery = hash.includes('?') ? hash.substring(hash.indexOf('?') + 1) : '';
             const params = new URLSearchParams(hashQuery || window.location.search);
-            const reg = params.get('region');
-            if (reg && reg.trim() !== '') {
-                setSelectedRegion(reg.toLowerCase().trim());
-            }
+            const region = params.get('region');
+            return region?.trim() ? region.toLowerCase().trim() : null;
         } catch (e) {
             console.warn('Failed to parse region from URL:', e);
+            return null;
         }
-    }, []);
+    });
 
     const urlLeadId = useMemo(() => {
         try {
@@ -113,24 +112,23 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
     }, [initialUserProfile]);
 
     // Load data from Supabase
-    const loadData = useCallback(async () => {
+    const loadData = useCallback(async (refresh = false) => {
         try {
-            setIsLoading(true);
-
-            // Load packages
-            const packagesData = await listPackages();
-            setPackages(packagesData);
-
-            // Load add-ons
-            const addOnsData = await listAddOns();
-            setAddOns(addOnsData);
-
-            // Load latest profile to get fresh packageOrder and addOnOrder
-            const profileData = await getProfile();
-            if (profileData) {
-                setUserProfile(profileData);
+            if (!refresh && initialPackages && initialAddOns) {
+                setPackages(initialPackages);
+                setAddOns(initialAddOns);
+                setError(null);
+                setIsLoading(false);
+                return;
             }
 
+            setIsLoading(true);
+            const [packagesData, addOnsData] = await Promise.all([
+                !refresh && initialPackages ? initialPackages : listPackages(),
+                !refresh && initialAddOns ? initialAddOns : listAddOns(),
+            ]);
+            setPackages(packagesData);
+            setAddOns(addOnsData);
             setError(null);
         } catch (err) {
             console.error('Error loading data:', err);
@@ -138,7 +136,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
         } finally {
             setIsLoading(false);
         }
-    }, [initialUserProfile]);
+    }, [initialPackages, initialAddOns]);
 
     useEffect(() => {
         loadData();
@@ -258,94 +256,15 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
         'Keluarga': "Menciptakan momen berharga dan layanan terbaik untuk kebahagiaan keluarga Anda."
     };
 
-    const activeWorkflows = useMemo<WorkflowItem[]>(() => {
-        if (userProfile?.publicPageConfig?.workflows && userProfile.publicPageConfig.workflows.length > 0) {
-            return userProfile.publicPageConfig.workflows;
-        }
-        const list: WorkflowItem[] = [];
-        if (userProfile?.publicPageConfig?.weddingWorkflow?.title) {
-            list.push({
-                id: 'wf-wedding',
-                title: userProfile.publicPageConfig.weddingWorkflow.title,
-                timeline: userProfile.publicPageConfig.weddingWorkflow.timeline || []
-            });
-        }
-        if (userProfile?.publicPageConfig?.smallEventWorkflow?.title) {
-            list.push({
-                id: 'wf-small-event',
-                title: userProfile.publicPageConfig.smallEventWorkflow.title,
-                timeline: userProfile.publicPageConfig.smallEventWorkflow.timeline || []
-            });
-        }
-        return list.length > 0 ? list : [
-            {
-                id: 'wf-wedding',
-                title: 'Wedding Timeline',
-                timeline: [
-                    'Konsep Acara Pernikahan / Awal → H-90',
-                    'Pemilihan Vendor / Detail → H-60',
-                    'Persiapan Final (Technical Meeting) → H-14',
-                    'Pelaksanaan Acara Pernikahan → Hari H',
-                    'Penyelesaian / Review Akhir → H+7',
-                    'Serah Terima Dokumentasi / Laporan → H+30'
-                ]
-            },
-            {
-                id: 'wf-small-event',
-                title: 'Event / Acara Pernikahan Kecil Timeline',
-                timeline: [
-                    'Konsep / Kesepakatan Awal → H-30',
-                    'Persiapan Final → H-7',
-                    'Pelaksanaan Acara Pernikahan → Hari H',
-                    'Penyelesaian Layanan / Laporan → H+14'
-                ]
-            }
-        ];
-    }, [userProfile?.publicPageConfig]);
+    const activeWorkflows = useMemo(
+        () => getWorkflows(userProfile?.publicPageConfig),
+        [userProfile?.publicPageConfig],
+    );
 
-    const activePackageTerms = useMemo<PackageTermItem[]>(() => {
-        if (userProfile?.publicPageConfig?.packageTerms && userProfile.publicPageConfig.packageTerms.length > 0) {
-            return userProfile.publicPageConfig.packageTerms;
-        }
-        return [
-            {
-                id: 'pt-booking',
-                title: 'Ketentuan Pemesanan & Pembayaran DP',
-                items: [
-                    'Booking paket dinyatakan sah setelah pembayaran Down Payment (DP) minimal 30%.',
-                    'Tanggal acara hanya akan di-lock setelah bukti transfer DP diverifikasi.',
-                    'Pelunasan total biaya paket dilakukan selambat-lambatnya H-7 sebelum hari pelaksanaan acara.',
-                    'Pembayaran hanya sah melalui rekening resmi vendor yang tertera di dokumen invoice.'
-                ]
-            },
-            {
-                id: 'pt-reschedule',
-                title: 'Perubahan Jadwal & Penyesuaian Paket',
-                items: [
-                    'Permintaan penyesuaian jadwal (reschedule) wajib disampaikan minimal H-30 sebelum hari acara.',
-                    'Perubahan tanggal tunduk pada ketersediaan jadwal tim vendor pada tanggal yang baru.',
-                    'Upgrade paket atau penambahan add-on dapat dilakukan kapan saja sebelum hari H.'
-                ]
-            },
-            {
-                id: 'pt-execution',
-                title: 'Pelaksanaan & Penyerahan Hasil Layanan',
-                items: [
-                    'Tim vendor akan tiba di lokasi acara selambat-lambatnya 2 jam sebelum rundown dimulai.',
-                    'Preview hasil layanan (teaser / highlight foto & video) dikirimkan maksimal H+7 acara.',
-                    'Seluruh hasil final (full album / Google Drive / video edit) diserahkan maksimal H+30 acara.'
-                ]
-            },
-            {
-                id: 'pt-cancellation',
-                title: 'Pembatalan & Force Majeure',
-                items: [
-                    'Pembatalan sepihak dari pihak klien menyebabkan DP hangus dan tidak dapat dikembalikan.',
-                    'Keadaan force majeure (bencana alam, huru-hara, regulasi darurat) diselesaikan secara musyawarah mufakat.'
-                ]
-            }
-        ];
-    }, [userProfile?.publicPageConfig?.packageTerms]);
+    const activePackageTerms = useMemo(
+        () => getPackageTerms(userProfile?.publicPageConfig?.packageTerms),
+        [userProfile?.publicPageConfig?.packageTerms],
+    );
 
     const formattedTerms = useMemo(() => {
         if (!userProfile.termsAndConditions || userProfile.termsAndConditions.trim() === '') return null;
@@ -660,7 +579,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     <h3 className="text-lg font-medium text-brand-text-light mb-2">Terjadi Kesalahan</h3>
                     <p className="text-brand-text-secondary mb-4">{error}</p>
                     <button
-                        onClick={() => loadData()}
+                        onClick={() => loadData(true)}
                         className="px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent-hover transition-colors cursor-pointer"
                     >
                         Coba Lagi

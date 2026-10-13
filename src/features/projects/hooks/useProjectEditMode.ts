@@ -14,7 +14,6 @@ import {
 } from '../../../types';
 import {
     updateProject as updateProjectInDb,
-    getProjectWithRelations,
     UpdateProjectInput,
 } from '../../../services/projects';
 import { upsertAssignmentsForProject } from '../../../services/projectTeamAssignments';
@@ -332,13 +331,15 @@ export function useProjectEditMode({
                         finalDriveLink: editFormData.finalDriveLink || undefined,
                     };
 
-                await updateProjectInDb(originalProject.id, sectionUpdate as UpdateProjectInput);
-                let updatedProject = { ...originalProject, ...sectionUpdate } as Project;
-                try {
-                    updatedProject = (await getProjectWithRelations(originalProject.id)) || updatedProject;
-                } catch (fetchErr) {
-                    console.warn('[EditMode] Failed to re-fetch updated project:', fetchErr);
-                }
+                const savedProject = await updateProjectInDb(originalProject.id, sectionUpdate as UpdateProjectInput);
+                const updatedProject = {
+                    ...originalProject,
+                    ...savedProject,
+                    ...sectionUpdate,
+                    team: originalProject.team,
+                    weddingDayChecklist: originalProject.weddingDayChecklist,
+                    addOns: originalProject.addOns,
+                } as Project;
                 setProjects(prev =>
                     prev.map(project => project.id === updatedProject.id ? updatedProject : project)
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
@@ -399,7 +400,7 @@ export function useProjectEditMode({
             };
 
             // 1. Update project in DB
-            await updateProjectInDb(projectData.id, {
+            const projectUpdatePromise = updateProjectInDb(projectData.id, {
                 projectName: projectData.projectName,
                 clientName: projectData.clientName,
                 clientId: projectData.clientId,
@@ -432,29 +433,40 @@ export function useProjectEditMode({
                 clientSubStatusNotes: projectData.clientSubStatusNotes as any,
             } as any);
 
-            // 2. Upsert team assignments
-            try {
-                const updatedAssignments = await upsertAssignmentsForProject(
-                    projectData.id,
-                    (projectData.team || []).map(t => ({
-                        id: t.id,
-                        memberId: t.memberId,
-                        name: t.name,
-                        role: t.role,
-                        fee: t.fee,
-                        subJob: t.subJob,
-                    })),
-                );
-                if (updatedAssignments && updatedAssignments.length > 0) {
-                    projectData = { ...projectData, team: updatedAssignments };
-                }
-            } catch (teamErr) {
-                console.warn('[EditMode] Failed to persist team assignments:', teamErr);
+            // The project row and team assignments are independent writes.
+            const assignmentsPromise = upsertAssignmentsForProject(
+                projectData.id,
+                (projectData.team || []).map(t => ({
+                    id: t.id,
+                    memberId: t.memberId,
+                    name: t.name,
+                    role: t.role,
+                    fee: t.fee,
+                    subJob: t.subJob,
+                })),
+            );
+            const [savedProjectResult, assignmentsResult] = await Promise.allSettled([
+                projectUpdatePromise,
+                assignmentsPromise,
+            ]);
+            if (savedProjectResult.status === 'rejected') throw savedProjectResult.reason;
+            projectData = {
+                ...projectData,
+                ...savedProjectResult.value,
+                team: projectData.team,
+                weddingDayChecklist: originalProject.weddingDayChecklist,
+                addOns: originalProject.addOns,
+            };
+            if (assignmentsResult.status === 'fulfilled' && assignmentsResult.value.length > 0) {
+                projectData = { ...projectData, team: assignmentsResult.value };
+            } else if (assignmentsResult.status === 'rejected') {
+                console.warn('[EditMode] Failed to persist team assignments:', assignmentsResult.reason);
             }
 
             // 3. Handle printing cost transaction (same logic as useProjectForm)
-            const paymentCardId = cards.find(c => c.id !== 'CARD_CASH')?.id;
-            if (paymentCardId && originalProject.printingCost !== projectData.printingCost) {
+            const costSyncPromise = (async () => {
+                const paymentCardId = cards.find(c => c.id !== 'CARD_CASH')?.id;
+                if (paymentCardId && originalProject.printingCost !== projectData.printingCost) {
                 const cost = projectData.printingCost || 0;
                 const oldCost = originalProject.printingCost || 0;
                 const costDiff = cost - oldCost;
@@ -499,7 +511,8 @@ export function useProjectEditMode({
                 } catch (e) {
                     console.warn('[EditMode] Failed to persist cost transaction:', e);
                 }
-            }
+                }
+            })();
 
             // 4. Upsert team payments (same logic as useProjectForm)
             const allTeamMembersOnProject = projectData.team || [];
@@ -560,27 +573,12 @@ export function useProjectEditMode({
             } catch (e) {
                 console.warn('[EditMode] Failed to persist team payments:', e);
             }
+            await costSyncPromise;
             setTeamProjectPayments([...otherProjectPayments, ...persistedPayments]);
 
-            // 5. Re-fetch fresh data
-            let finalProject = projectData;
-            try {
-                const freshProject = await getProjectWithRelations(projectData.id);
-                if (freshProject) finalProject = freshProject;
-            } catch (fetchErr) {
-                console.warn('[EditMode] Failed to re-fetch updated project:', fetchErr);
-            }
+            const finalProject = projectData;
 
-            // 6. Sync client status
-            if (clientIdsToSync.size > 0) {
-                try {
-                    await Promise.all(Array.from(clientIdsToSync).map(id => syncClientStatusFromProjects(id)));
-                } catch (e) {
-                    console.warn('[EditMode] Failed to sync client status:', e);
-                }
-            }
-
-            // 7. Update state
+            // Update the visible project immediately after its writes have completed.
             setProjects(prev =>
                 prev.map(p => (p.id === finalProject.id ? finalProject : p)).sort(
                     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
@@ -588,10 +586,14 @@ export function useProjectEditMode({
             );
             setSelectedProject(prev => (prev && prev.id === finalProject.id ? finalProject : prev));
 
-            // 8. Exit edit mode
             setIsEditing(false);
             setEditFormData(null);
             showNotification('Perubahan acara berhasil disimpan.');
+            if (clientIdsToSync.size > 0) {
+                void Promise.all(Array.from(clientIdsToSync).map(id => syncClientStatusFromProjects(id))).catch(e => {
+                    console.warn('[EditMode] Failed to sync client status:', e);
+                });
+            }
         } catch (err) {
             console.error('[EditMode] Save failed:', err);
             showNotification(

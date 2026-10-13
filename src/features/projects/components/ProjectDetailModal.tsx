@@ -28,6 +28,10 @@ import {
 import supabase from '../../../lib/supabaseClient';
 import { formatCurrency, getStatusClass, getProgressForStatus } from '../utils/projectHelpers';
 import { EditFormData, ProjectEditSection } from '../hooks/useProjectEditMode';
+import { getPackageTerms } from '../../packages/packageTerms';
+import PackageTermsDisplay from '../../packages/components/PackageTermsDisplay';
+import WorkflowDisplay from '../../packages/components/WorkflowDisplay';
+import { getWorkflows } from '../../packages/workflows';
 
 export interface ProjectDetailModalProps {
   selectedProject: Project | null;
@@ -127,7 +131,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const [categoryNameDraft, setCategoryNameDraft] = useState('');
   const [isInitializingChecklist, setIsInitializingChecklist] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [mobileSectionTab, setMobileSectionTab] = useState<'all' | 'info' | 'meetings' | 'team' | 'checklist' | 'files'>('all');
+  const [mobileSectionTab, setMobileSectionTab] = useState<'all' | 'info' | 'meetings' | 'team' | 'checklist' | 'terms' | 'workflow' | 'files'>('all');
 
   const startSectionEdit = (section: ProjectEditSection) => {
     setEditingSection(section);
@@ -657,6 +661,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
     [];
 
   const pkg = packages.find(p => p.id === selectedProject.packageId) ?? null;
+  const packageTerms = getPackageTerms(profile.publicPageConfig?.packageTerms);
+  const workflows = getWorkflows(profile.publicPageConfig);
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -751,6 +757,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 { id: 'info', label: 'Info & Status' },
                 { id: 'meetings', label: 'Meeting' },
                 { id: 'team', label: `Tim & Paket (${selectedProject.team?.length || 0})` },
+                { id: 'terms', label: 'Syarat Paket' },
+                { id: 'workflow', label: 'Workflow' },
                 { id: 'files', label: 'File & Link' },
               ] as const).map(tab => {
                 const active = mobileSectionTab === tab.id;
@@ -1141,6 +1149,18 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 </div>
               </section>
             </>
+          )}
+
+          {(mobileSectionTab === 'all' || mobileSectionTab === 'terms') && (
+            <section className="pt-3 border-t border-slate-200">
+              <PackageTermsDisplay terms={packageTerms} packageName={pkg?.name || selectedProject.packageName} />
+            </section>
+          )}
+
+          {(mobileSectionTab === 'all' || mobileSectionTab === 'workflow') && (
+            <section className="pt-3 border-t border-slate-200">
+              <WorkflowDisplay workflows={workflows} projectName={selectedProject.projectName} />
+            </section>
           )}
 
           {/* ──────────── SEKSI 2: CHECKLIST HARI H ────────────────── */}

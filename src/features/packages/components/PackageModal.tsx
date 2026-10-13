@@ -30,6 +30,7 @@ interface PackageModalProps {
     packageCategories: string[];
     unionRegions: { value: string; label: string }[];
     existingRegions: string[];
+    isSubmitting: boolean;
     onSubmit: (e: React.FormEvent) => Promise<void>;
     onCoverImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
 }
@@ -43,6 +44,7 @@ export const PackageModal: React.FC<PackageModalProps> = ({
     packageCategories,
     unionRegions,
     existingRegions,
+    isSubmitting,
     onSubmit,
     onCoverImageUpload,
 }) => {
@@ -623,9 +625,10 @@ export const PackageModal: React.FC<PackageModalProps> = ({
                         </button>
                         <button
                             type="submit"
-                            className="min-h-[38px] sm:min-h-[44px] flex-1 sm:flex-initial py-2 px-3 sm:px-5 rounded-xl bg-[#5D87FF] hover:bg-[#4871e3] text-white font-semibold text-xs transition-all shadow-[0_4px_12px_rgba(93,135,255,0.25)] touch-manipulation cursor-pointer text-center"
+                            disabled={isSubmitting}
+                            className="min-h-[38px] sm:min-h-[44px] flex-1 sm:flex-initial py-2 px-3 sm:px-5 rounded-xl bg-[#5D87FF] hover:bg-[#4871e3] text-white font-semibold text-xs transition-all shadow-[0_4px_12px_rgba(93,135,255,0.25)] touch-manipulation cursor-pointer text-center disabled:opacity-60"
                         >
-                            {editMode === 'new' ? 'Simpan Paket' : 'Perbarui Paket'}
+                            {isSubmitting ? 'Menyimpan...' : editMode === 'new' ? 'Simpan Paket' : 'Perbarui Paket'}
                         </button>
                     </div>
                 </div>

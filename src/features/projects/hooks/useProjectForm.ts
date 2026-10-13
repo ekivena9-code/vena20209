@@ -386,6 +386,7 @@ export function useProjectForm({
 
         if (!ensureOnlineOrNotify(showNotification)) return;
         let projectData: Project;
+        let costSyncPromise: Promise<void> = Promise.resolve();
 
         const clientIdsToSync = new Set<string>();
 
@@ -466,7 +467,7 @@ export function useProjectForm({
             if (projectData?.clientId) clientIdsToSync.add(projectData.clientId);
 
             try {
-                await updateProjectInDb(projectData.id, {
+                const projectUpdatePromise = updateProjectInDb(projectData.id, {
                     projectName: projectData.projectName,
                     clientName: projectData.clientName,
                     clientId: projectData.clientId,
@@ -509,20 +510,30 @@ export function useProjectForm({
                     invoiceSignature: projectData.invoiceSignature as any,
                 } as any);
 
-                try {
-                    const updatedAssignments = await upsertAssignmentsForProject(projectData.id, (projectData.team || []).map((t: AssignedTeamMember) => ({
-                        id: t.id,
-                        memberId: t.memberId,
-                        name: t.name,
-                        role: t.role,
-                        fee: t.fee,
-                        subJob: t.subJob,
-                    })));
-                    if (updatedAssignments && updatedAssignments.length > 0) {
-                        projectData.team = updatedAssignments;
-                    }
-                } catch (teamErr) {
-                    console.warn('[Projects] Failed to persist team assignments:', teamErr);
+                const assignmentsPromise = upsertAssignmentsForProject(projectData.id, (projectData.team || []).map((t: AssignedTeamMember) => ({
+                    id: t.id,
+                    memberId: t.memberId,
+                    name: t.name,
+                    role: t.role,
+                    fee: t.fee,
+                    subJob: t.subJob,
+                })));
+                const [savedProjectResult, assignmentsResult] = await Promise.allSettled([
+                    projectUpdatePromise,
+                    assignmentsPromise,
+                ]);
+                if (savedProjectResult.status === 'rejected') throw savedProjectResult.reason;
+                projectData = {
+                    ...projectData,
+                    ...savedProjectResult.value,
+                    team: projectData.team,
+                    weddingDayChecklist: originalProject.weddingDayChecklist,
+                    addOns: originalProject.addOns,
+                };
+                if (assignmentsResult.status === 'fulfilled' && assignmentsResult.value.length > 0) {
+                    projectData.team = assignmentsResult.value;
+                } else if (assignmentsResult.status === 'rejected') {
+                    console.warn('[Projects] Failed to persist team assignments:', assignmentsResult.reason);
                 }
             } catch (err) {
                 console.warn('[Projects] Failed to update project in Supabase:', err);
@@ -530,8 +541,9 @@ export function useProjectForm({
                 return;
             }
 
-            const paymentCardId = cards.find(c => c.id !== 'CARD_CASH')?.id;
-            if (paymentCardId) {
+            costSyncPromise = (async () => {
+                const paymentCardId = cards.find(c => c.id !== 'CARD_CASH')?.id;
+                if (paymentCardId) {
                 const fieldsToProcess: ('printingCost')[] = [];
                 if (originalProject.printingCost !== projectData.printingCost) fieldsToProcess.push('printingCost');
 
@@ -575,7 +587,8 @@ export function useProjectForm({
                         console.warn('[Projects] Failed to persist cost transaction:', e);
                     }
                 }
-            }
+                }
+            })();
         }
 
         const allTeamMembersOnProject = projectData.team || [];
@@ -630,17 +643,10 @@ export function useProjectForm({
         } catch (e) {
             console.warn('[Projects] Failed to persist team payments:', e);
         }
+        await costSyncPromise;
         setTeamProjectPayments([...otherProjectPayments, ...persistedPayments]);
 
-        let finalProject = projectData;
-        try {
-            const freshProject = await getProjectWithRelations(projectData.id);
-            if (freshProject) {
-                finalProject = freshProject;
-            }
-        } catch (fetchErr) {
-            console.warn('[Projects] Failed to re-fetch updated project:', fetchErr);
-        }
+        const finalProject = projectData;
 
         if (formMode === 'add') {
             setProjects(prev => [finalProject, ...prev.filter(p => p.id !== finalProject.id)].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -649,15 +655,12 @@ export function useProjectForm({
         }
         setSelectedProject(prev => prev && prev.id === finalProject.id ? finalProject : prev);
 
-        if (clientIdsToSync.size > 0) {
-            try {
-                await Promise.all(Array.from(clientIdsToSync).map(id => syncClientStatusFromProjects(id)));
-            } catch (e) {
-                console.warn('[Projects] Failed to sync client status from projects:', e);
-            }
-        }
-
         handleCloseForm();
+        if (clientIdsToSync.size > 0) {
+            void Promise.all(Array.from(clientIdsToSync).map(id => syncClientStatusFromProjects(id))).catch(e => {
+                console.warn('[Projects] Failed to sync client status from projects:', e);
+            });
+        }
     };
 
     return {

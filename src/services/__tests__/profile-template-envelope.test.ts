@@ -48,10 +48,14 @@ describe('profile booking template envelope', () => {
         };
       },
       update: (updates: Record<string, any>) => ({
-        eq: async () => {
-          profileRow = { ...profileRow, ...updates };
-          return { error: null as Error | null };
-        },
+        eq: () => ({
+          select: () => ({
+            single: async () => {
+              profileRow = { ...profileRow, ...updates };
+              return { data: profileRow, error: null as Error | null };
+            },
+          }),
+        }),
       }),
       insert: (values: Record<string, any>) => ({
         select: () => ({

@@ -166,8 +166,22 @@ export async function upsertProfile(input: Partial<Profile> & { id?: string }): 
     input.checklistTemplates !== undefined
   ) {
     let existingEnvelope: any = {};
-    if (input.id) {
-      const { data: current } = await supabase.from(TABLE).select('booking_form_template').eq('id', input.id).maybeSingle();
+    const hasCompleteEnvelope = TEMPLATE_ENVELOPE_KEYS.every(key =>
+      Object.prototype.hasOwnProperty.call(input, key),
+    );
+    if (hasCompleteEnvelope) {
+      existingEnvelope = Object.fromEntries(
+        TEMPLATE_ENVELOPE_KEYS
+          .filter(key => input[key] !== undefined)
+          .map(key => [key, input[key]]),
+      );
+    } else if (input.id) {
+      const { data: current, error: readError } = await supabase
+        .from(TABLE)
+        .select('booking_form_template')
+        .eq('id', input.id)
+        .maybeSingle();
+      if (readError) throw readError;
       const parsed = getTemplateEnvelope(current?.booking_form_template);
       if (parsed) {
         existingEnvelope = parsed;
@@ -199,10 +213,13 @@ export async function upsertProfile(input: Partial<Profile> & { id?: string }): 
     row.admin_user_id = data.user.id;
   }
   if (input.id) {
-    const { error } = await supabase.from(TABLE).update(row).eq('id', input.id);
+    const { data, error } = await supabase
+      .from(TABLE)
+      .update(row)
+      .eq('id', input.id)
+      .select('*')
+      .single();
     if (error) throw error;
-    const { data, error: err2 } = await supabase.from(TABLE).select('*').eq('id', input.id).single();
-    if (err2) throw err2;
     return fromRow(data);
   } else {
     const { data, error } = await supabase.from(TABLE).insert(row).select('*').single();

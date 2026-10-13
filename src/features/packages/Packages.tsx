@@ -23,7 +23,7 @@ import {
     updateAddOn,
     deleteAddOn,
 } from '../../services/addOns';
-import { updateProfile } from '../../services/profile';
+import { upsertProfile } from '../../services/profile';
 
 import { PackageCard } from './components/PackageCard';
 import { PackageModal } from './components/PackageModal';
@@ -69,6 +69,7 @@ export interface PackagesProps {
     setAddOns: React.Dispatch<React.SetStateAction<AddOn[]>>;
     projects: Project[];
     profile: Profile;
+    setProfile: React.Dispatch<React.SetStateAction<Profile>>;
     showNotification: (message: string) => void;
     initialAction: NavigationAction | null;
     setInitialAction: (action: NavigationAction | null) => void;
@@ -314,6 +315,7 @@ export const Packages: React.FC<PackagesProps> = ({
     setAddOns,
     projects,
     profile,
+    setProfile,
     showNotification,
     initialAction,
     setInitialAction,
@@ -323,10 +325,18 @@ export const Packages: React.FC<PackagesProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [regionFilter, setRegionFilter] = useState<string>('');
     const [categoryFilter, setCategoryFilter] = useState<string>('');
+    const [packageOrder, setPackageOrder] = useState<string[]>(() => profile.publicPageConfig?.packageOrder || []);
+    const [addOnOrder, setAddOnOrder] = useState<string[]>(() => profile.publicPageConfig?.addOnOrder || []);
+    const packageOrderRef = React.useRef(packageOrder);
+    const addOnOrderRef = React.useRef(addOnOrder);
+    const packageOrderSaveInProgress = React.useRef(false);
+    const addOnOrderSaveInProgress = React.useRef(false);
 
     // ── Modal States ──
     const [packageEditMode, setPackageEditMode] = useState<string | null>(null);
     const [packageFormData, setPackageFormData] = useState<any>(emptyPackageForm);
+    const [isSavingPackage, setIsSavingPackage] = useState(false);
+    const isSavingPackageRef = React.useRef(false);
     const [copySourcePkg, setCopySourcePkg] = useState<Package | null>(null);
     const [isAddOnFormOpen, setIsAddOnFormOpen] = useState(false);
     const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null);
@@ -376,9 +386,17 @@ export const Packages: React.FC<PackagesProps> = ({
         return Array.from(cats).filter(Boolean).sort();
     }, [packages, profile.packageCategories]);
 
-    // Saved ordering from profile
-    const packageOrder = profile.publicPageConfig?.packageOrder || [];
-    const addOnOrder = profile.publicPageConfig?.addOnOrder || [];
+    useEffect(() => {
+        const savedPackageOrder = profile.publicPageConfig?.packageOrder || [];
+        packageOrderRef.current = savedPackageOrder;
+        setPackageOrder(savedPackageOrder);
+    }, [profile.publicPageConfig?.packageOrder]);
+
+    useEffect(() => {
+        const savedAddOnOrder = profile.publicPageConfig?.addOnOrder || [];
+        addOnOrderRef.current = savedAddOnOrder;
+        setAddOnOrder(savedAddOnOrder);
+    }, [profile.publicPageConfig?.addOnOrder]);
 
     // Helper: sort items by saved order array
     const sortByOrder = <T extends { id: string }>(items: T[], order: string[]): T[] => {
@@ -569,6 +587,7 @@ export const Packages: React.FC<PackagesProps> = ({
 
     const handleSubmitPackage = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSavingPackageRef.current) return;
         const hasValidDurationOptions = Array.isArray(packageFormData.durationOptions) && 
             packageFormData.durationOptions.some((o: any) => String(o.label || '').trim() !== '' && String(o.price || '') !== '');
 
@@ -612,6 +631,8 @@ export const Packages: React.FC<PackagesProps> = ({
                 : undefined,
         };
 
+        isSavingPackageRef.current = true;
+        setIsSavingPackage(true);
         try {
             if (packageEditMode !== 'new' && packageEditMode) {
                 const updated = await updatePackage(packageEditMode, packageData);
@@ -627,6 +648,9 @@ export const Packages: React.FC<PackagesProps> = ({
         } catch (err: any) {
             console.error('[Packages.save] error:', err);
             alert(`Gagal menyimpan paket ke database. ${err?.message || 'Silakan coba lagi.'}`);
+        } finally {
+            isSavingPackageRef.current = false;
+            setIsSavingPackage(false);
         }
     };
 
@@ -753,91 +777,162 @@ export const Packages: React.FC<PackagesProps> = ({
     };
 
     // ── Reorder Handlers ──
-    const handleMovePackage = async (pkgId: string, direction: 'up' | 'down', groupItems?: Package[]) => {
+    const handleMovePackage = (pkgId: string, direction: 'up' | 'down', groupItems?: Package[]) => {
         // Build current order: use saved order as base, ensure all current package IDs are present
         const currentIds = packages.map(p => p.id);
-        let order = [...(profile.publicPageConfig?.packageOrder || [])];
+        let order = [...packageOrderRef.current];
         // Add any missing IDs at the end
         currentIds.forEach(id => { if (!order.includes(id)) order.push(id); });
         // Remove IDs no longer in packages
         order = order.filter(id => currentIds.includes(id));
 
         const items = groupItems && groupItems.length > 0 ? groupItems : packages;
-        const currentItemIdx = items.findIndex(p => p.id === pkgId);
+        const itemsInOrder = [...items].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+        const currentItemIdx = itemsInOrder.findIndex(p => p.id === pkgId);
         if (currentItemIdx === -1) return;
 
         const targetItemIdx = direction === 'up' ? currentItemIdx - 1 : currentItemIdx + 1;
-        if (targetItemIdx < 0 || targetItemIdx >= items.length) return;
+        if (targetItemIdx < 0 || targetItemIdx >= itemsInOrder.length) return;
 
-        const targetPkg = items[targetItemIdx];
+        const targetPkg = itemsInOrder[targetItemIdx];
         const idxA = order.indexOf(pkgId);
         const idxB = order.indexOf(targetPkg.id);
         if (idxA === -1 || idxB === -1) return;
 
         [order[idxA], order[idxB]] = [order[idxB], order[idxA]];
+        packageOrderRef.current = order;
+        setPackageOrder(order);
+        setProfile(prev => ({
+            ...prev,
+            publicPageConfig: {
+                ...prev.publicPageConfig,
+                packageOrder: order,
+            },
+        }));
 
-        try {
-            await updateProfile({
-                ...profile,
-                publicPageConfig: {
-                    ...profile.publicPageConfig,
-                    packageOrder: order,
-                },
-            });
-            setPackages(prev => sortByOrder([...prev], order));
-            showNotification('Urutan paket berhasil diperbarui.');
-        } catch (err) {
-            console.error('Failed to save package order:', err);
-            showNotification('Gagal menyimpan urutan paket.');
-        }
+        if (packageOrderSaveInProgress.current) return;
+        packageOrderSaveInProgress.current = true;
+        void (async () => {
+            let savedOrder: string[] | undefined;
+            try {
+                while (!savedOrder || savedOrder.join('\0') !== packageOrderRef.current.join('\0')) {
+                    const orderToSave = [...packageOrderRef.current];
+                    try {
+                        await upsertProfile({
+                            id: profile.id,
+                            publicPageConfig: {
+                                ...profile.publicPageConfig,
+                                packageOrder: orderToSave,
+                            },
+                        });
+                        savedOrder = orderToSave;
+                    } catch (error) {
+                        if (orderToSave.join('\0') !== packageOrderRef.current.join('\0')) continue;
+                        throw error;
+                    }
+                }
+                showNotification('Urutan paket berhasil diperbarui.');
+            } catch (err) {
+                console.error('Failed to save package order:', err);
+                const fallbackOrder = savedOrder || profile.publicPageConfig?.packageOrder || [];
+                packageOrderRef.current = fallbackOrder;
+                setPackageOrder(fallbackOrder);
+                setProfile(prev => ({
+                    ...prev,
+                    publicPageConfig: {
+                        ...prev.publicPageConfig,
+                        packageOrder: fallbackOrder,
+                    },
+                }));
+                showNotification('Gagal menyimpan urutan paket.');
+            } finally {
+                packageOrderSaveInProgress.current = false;
+            }
+        })();
     };
 
-    const handleMoveAddOn = async (addOnId: string, direction: 'up' | 'down', groupItems?: AddOn[]) => {
+    const handleMoveAddOn = (addOnId: string, direction: 'up' | 'down', groupItems?: AddOn[]) => {
         const currentIds = addOns.map(a => a.id);
-        let order = [...(profile.publicPageConfig?.addOnOrder || [])];
+        let order = [...addOnOrderRef.current];
         currentIds.forEach(id => { if (!order.includes(id)) order.push(id); });
         order = order.filter(id => currentIds.includes(id));
 
         const items = groupItems && groupItems.length > 0 ? groupItems : addOns;
-        const currentItemIdx = items.findIndex(a => a.id === addOnId);
+        const itemsInOrder = [...items].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+        const currentItemIdx = itemsInOrder.findIndex(a => a.id === addOnId);
         if (currentItemIdx === -1) return;
 
         const targetItemIdx = direction === 'up' ? currentItemIdx - 1 : currentItemIdx + 1;
-        if (targetItemIdx < 0 || targetItemIdx >= items.length) return;
+        if (targetItemIdx < 0 || targetItemIdx >= itemsInOrder.length) return;
 
-        const targetAddOn = items[targetItemIdx];
+        const targetAddOn = itemsInOrder[targetItemIdx];
         const idxA = order.indexOf(addOnId);
         const idxB = order.indexOf(targetAddOn.id);
         if (idxA === -1 || idxB === -1) return;
 
         [order[idxA], order[idxB]] = [order[idxB], order[idxA]];
+        addOnOrderRef.current = order;
+        setAddOnOrder(order);
+        setProfile(prev => ({
+            ...prev,
+            publicPageConfig: {
+                ...prev.publicPageConfig,
+                addOnOrder: order,
+            },
+        }));
 
-        try {
-            await updateProfile({
-                ...profile,
-                publicPageConfig: {
-                    ...profile.publicPageConfig,
-                    addOnOrder: order,
-                },
-            });
-            setAddOns(prev => sortByOrder([...prev], order));
-            showNotification('Urutan add-on berhasil diperbarui.');
-        } catch (err) {
-            console.error('Failed to save add-on order:', err);
-            showNotification('Gagal menyimpan urutan add-on.');
-        }
+        if (addOnOrderSaveInProgress.current) return;
+        addOnOrderSaveInProgress.current = true;
+        void (async () => {
+            let savedOrder: string[] | undefined;
+            try {
+                while (!savedOrder || savedOrder.join('\0') !== addOnOrderRef.current.join('\0')) {
+                    const orderToSave = [...addOnOrderRef.current];
+                    try {
+                        await upsertProfile({
+                            id: profile.id,
+                            publicPageConfig: {
+                                ...profile.publicPageConfig,
+                                addOnOrder: orderToSave,
+                            },
+                        });
+                        savedOrder = orderToSave;
+                    } catch (error) {
+                        if (orderToSave.join('\0') !== addOnOrderRef.current.join('\0')) continue;
+                        throw error;
+                    }
+                }
+                showNotification('Urutan add-on berhasil diperbarui.');
+            } catch (err) {
+                console.error('Failed to save add-on order:', err);
+                const fallbackOrder = savedOrder || profile.publicPageConfig?.addOnOrder || [];
+                addOnOrderRef.current = fallbackOrder;
+                setAddOnOrder(fallbackOrder);
+                setProfile(prev => ({
+                    ...prev,
+                    publicPageConfig: {
+                        ...prev.publicPageConfig,
+                        addOnOrder: fallbackOrder,
+                    },
+                }));
+                showNotification('Gagal menyimpan urutan add-on.');
+            } finally {
+                addOnOrderSaveInProgress.current = false;
+            }
+        })();
     };
 
     // ── Package Terms & Conditions Handler (for Public Catalog) ──
     const handleSavePackageTerms = async (updatedTerms: PackageTermItem[]) => {
         try {
-            await updateProfile({
-                ...profile,
+            const updated = await upsertProfile({
+                id: profile.id,
                 publicPageConfig: {
                     ...profile.publicPageConfig,
                     packageTerms: updatedTerms,
                 },
             });
+            setProfile(updated);
             showNotification('Syarat & ketentuan paket berhasil disimpan.');
         } catch (err) {
             console.error('Error saving package terms:', err);
@@ -851,8 +946,8 @@ export const Packages: React.FC<PackagesProps> = ({
             const weddingWf = updatedWorkflows[0] || { title: 'Wedding Timeline', timeline: [] as string[] };
             const smallEventWf = updatedWorkflows[1] || { title: 'Event Timeline', timeline: [] as string[] };
 
-            await updateProfile({
-                ...profile,
+            const updated = await upsertProfile({
+                id: profile.id,
                 publicPageConfig: {
                     ...profile.publicPageConfig,
                     workflows: updatedWorkflows,
@@ -866,6 +961,7 @@ export const Packages: React.FC<PackagesProps> = ({
                     },
                 },
             });
+            setProfile(updated);
             showNotification('Workflow berhasil disimpan.');
         } catch (err) {
             console.error('Error saving workflows:', err);
@@ -882,14 +978,15 @@ export const Packages: React.FC<PackagesProps> = ({
                 pdfUrl: item.pdfUrl.length > 1024 * 1024 * 1 ? item.pdfUrl.substring(0, 1024 * 1024 * 1) + '...' : item.pdfUrl
             }));
 
-            await updateProfile({
-                ...profile,
+            const updated = await upsertProfile({
+                id: profile.id,
                 publicPageConfig: {
                     ...profile.publicPageConfig,
                     regionPricelists: sanitizedList,
                     pricelistPdfUrl: sanitizedList.length > 0 ? sanitizedList[0].pdfUrl : undefined,
                 },
             });
+            setProfile(updated);
         } catch (err) {
             console.error('Error saving region pricelists:', err);
             throw err;
@@ -1329,6 +1426,7 @@ export const Packages: React.FC<PackagesProps> = ({
                     packageCategories={availableCategories}
                     unionRegions={unionRegions}
                     existingRegions={existingRegions}
+                    isSubmitting={isSavingPackage}
                     onSubmit={handleSubmitPackage}
                     onCoverImageUpload={handleCoverImageUpload}
                 />
