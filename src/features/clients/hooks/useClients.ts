@@ -33,14 +33,43 @@ export const useClients = (
     const [dateTo, setDateTo] = useState('');
 
     const allClientData = useMemo(() => {
-        return clients.map(client => {
-            const clientProjects = projects.filter(p => p.clientId === client.id);
-            const totalValue = clientProjects.reduce((sum, p) => sum + p.totalCost, 0);
-            const totalPaid = clientProjects.reduce((sum, p) => sum + p.amountPaid, 0);
+        const projectsByClient = new Map<string, {
+            projects: Project[];
+            totalValue: number;
+            totalPaid: number;
+            mostRecentProject: Project | null;
+            mostRecentProjectTime: number;
+        }>();
 
-            const mostRecentProject = clientProjects.length > 0
-                ? [...clientProjects].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
-                : null;
+        projects.forEach(project => {
+            let summary = projectsByClient.get(project.clientId);
+            if (!summary) {
+                summary = {
+                    projects: [],
+                    totalValue: 0,
+                    totalPaid: 0,
+                    mostRecentProject: null,
+                    mostRecentProjectTime: Number.NEGATIVE_INFINITY,
+                };
+                projectsByClient.set(project.clientId, summary);
+            }
+
+            summary.projects.push(project);
+            summary.totalValue += project.totalCost;
+            summary.totalPaid += project.amountPaid;
+            const projectTime = new Date(project.date).getTime();
+            if (!summary.mostRecentProject || projectTime > summary.mostRecentProjectTime) {
+                summary.mostRecentProject = project;
+                summary.mostRecentProjectTime = projectTime;
+            }
+        });
+
+        return clients.map(client => {
+            const summary = projectsByClient.get(client.id);
+            const clientProjects = summary?.projects ?? [];
+            const mostRecentProject = summary?.mostRecentProject ?? null;
+            const totalValue = summary?.totalValue ?? 0;
+            const totalPaid = summary?.totalPaid ?? 0;
 
             return {
                 ...client,

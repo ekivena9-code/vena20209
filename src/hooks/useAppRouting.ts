@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { NavigationAction, ViewType } from "../types";
-import { LAST_ROUTE_STORAGE_KEY } from "../routes/routesConfig";
+import { LAST_ROUTE_STORAGE_KEY, ROUTE_TO_VIEW_MAP } from "../routes/routesConfig";
 
 const LEGACY_VIEW_ALIASES: Record<string, ViewType> = {
   "manajemen klien": ViewType.CLIENTS,
@@ -8,6 +8,63 @@ const LEGACY_VIEW_ALIASES: Record<string, ViewType> = {
   proyek: ViewType.CLIENTS,
   acara: ViewType.CLIENTS,
 };
+
+function decodeRoutePath(path: string): string {
+  return path
+    .split("/")
+    .map(segment => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
+}
+
+export function resolveAuthenticatedViewFromHash(hash: string): ViewType | null {
+  const rawRoute = hash.startsWith("#") ? hash.slice(1) : hash;
+  const path = rawRoute.split("?")[0].replace(/^\/+/, "");
+  if (!path) return null;
+
+  const decodedPath = decodeRoutePath(path);
+  const firstSegment = decodedPath.split("/")[0];
+  const routeView = ROUTE_TO_VIEW_MAP[firstSegment.toLowerCase()];
+  if (routeView && routeView !== ViewType.HOMEPAGE) return routeView;
+  const aliasedView = LEGACY_VIEW_ALIASES[firstSegment.toLowerCase()];
+  if (aliasedView) return aliasedView;
+
+  if (
+    firstSegment.toLowerCase() === "projects" ||
+    firstSegment === ViewType.PROJECTS
+  ) {
+    return ViewType.CLIENTS;
+  }
+
+  return Object.values(ViewType).find(view =>
+    view.toLowerCase() === firstSegment.toLowerCase() ||
+    view.toLowerCase().replace(/ /g, "-") === firstSegment.toLowerCase()
+  ) ?? null;
+}
+
+function getInitialActiveView(isAuthenticated: boolean): ViewType {
+  const routeView = resolveAuthenticatedViewFromHash(window.location.hash);
+  if (routeView) return routeView;
+
+  if (isAuthenticated) {
+    try {
+      const lastRoute = window.localStorage.getItem(LAST_ROUTE_STORAGE_KEY);
+      if (lastRoute) {
+        const storedView = resolveAuthenticatedViewFromHash(lastRoute);
+        if (storedView) return storedView;
+      }
+    } catch (error) {
+      console.warn("[Routing] Failed to read last route:", error);
+    }
+  }
+
+  return ViewType.DASHBOARD;
+}
 
 export interface UseAppRoutingProps {
   isAuthenticated: boolean;
@@ -44,7 +101,7 @@ export function useAppRouting({
   onMarkNotificationRead,
   appDataLoader,
 }: UseAppRoutingProps): UseAppRoutingReturn {
-  const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
+  const [activeView, setActiveView] = useState<ViewType>(() => getInitialActiveView(isAuthenticated));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [initialAction, setInitialAction] = useState<NavigationAction | null>(null);
@@ -58,18 +115,13 @@ export function useAppRouting({
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1); // Remove #
       if (hash) {
-        const view = hash.startsWith("/") ? hash.slice(1) : hash;
-        // Only set activeView for known ViewType routes, ignore query strings
-        const viewWithoutQuery = view.split("?")[0];
-        const isLegacyProjectRoute =
-          viewWithoutQuery === ViewType.PROJECTS || viewWithoutQuery.toLowerCase() === "projects";
-        const aliasedView = LEGACY_VIEW_ALIASES[viewWithoutQuery.toLowerCase()];
-        if (isLegacyProjectRoute || aliasedView || Object.values(ViewType).includes(viewWithoutQuery as ViewType)) {
-          const resolvedView = isLegacyProjectRoute ? ViewType.CLIENTS : aliasedView || viewWithoutQuery as ViewType;
+        const resolvedView = resolveAuthenticatedViewFromHash(hash);
+        if (resolvedView) {
           setActiveView(resolvedView);
           setRoute(`/${resolvedView}`);
-          if (resolvedView !== viewWithoutQuery) {
-            window.location.hash = `/${resolvedView}`;
+          const currentPath = decodeRoutePath(hash.split("?")[0]);
+          if (currentPath !== `/${resolvedView}` && currentPath !== resolvedView) {
+            window.location.hash = `/${encodeURIComponent(resolvedView)}`;
           }
         } else {
           setRoute(hash);
@@ -89,9 +141,9 @@ export function useAppRouting({
 
   // Persist last route for post-login redirect
   useEffect(() => {
-    if (isAuthenticated && activeView !== ViewType.DASHBOARD) {
+    if (isAuthenticated) {
       try {
-        window.localStorage.setItem(LAST_ROUTE_STORAGE_KEY, `#/${activeView}`);
+        window.localStorage.setItem(LAST_ROUTE_STORAGE_KEY, `#/${encodeURIComponent(activeView)}`);
       } catch (e) {
         console.warn("[Routing] Failed to persist last route:", e);
       }
@@ -103,7 +155,7 @@ export function useAppRouting({
     (view: ViewType) => {
       const resolvedView = view === ViewType.PROJECTS ? ViewType.CLIENTS : view;
       setActiveView(resolvedView);
-      window.location.hash = `/${resolvedView}`;
+      window.location.hash = `/${encodeURIComponent(resolvedView)}`;
       setIsSidebarOpen(false);
       setIsSearchOpen(false);
     },

@@ -35,6 +35,7 @@ export const DuplicatePackageModal: React.FC<DuplicatePackageModalProps> = ({
             onClose();
         } catch (err) {
             console.error(err);
+            alert('Gagal menduplikasi paket ke database. Silakan coba lagi.');
         } finally {
             setIsSubmitting(false);
         }

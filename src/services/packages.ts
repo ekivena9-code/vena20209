@@ -3,6 +3,10 @@ import { Package, PhysicalItem, DurationOption } from '../types';
 
 const TABLE = 'packages';
 
+function isMissingPackageColumnError(error: { code?: string } | null): boolean {
+  return error?.code === 'PGRST204' || error?.code === '42703';
+}
+
 export function normalizePackage(row: any): Package {
   return normalize(row);
 }
@@ -72,7 +76,8 @@ export async function createPackage(payload: Omit<Package, 'id' | 'createdAt'>):
     .select('*')
     .single();
   if (error) {
-    // Fallback to minimal payload in case some columns don't exist yet in DB schema
+    if (!isMissingPackageColumnError(error)) throw error;
+    // Fallback only for legacy schemas missing newer package columns.
     // Minimal: name, price, category, processing_time, cover_image
     console.warn('[Supabase][packages.create] verbose insert failed, retrying with minimal payload. Error:', error);
     const minimal: any = {
@@ -97,6 +102,7 @@ export async function updatePackage(id: string, patch: Partial<Package>): Promis
     .select('*')
     .single();
   if (error) {
+    if (!isMissingPackageColumnError(error)) throw error;
     console.warn('[Supabase][packages.update] verbose update failed, retrying with minimal payload. Error:', error);
     const minimal: any = {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
@@ -121,4 +127,3 @@ export async function deletePackage(id: string): Promise<void> {
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) throw error;
 }
-

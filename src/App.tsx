@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import { ViewType } from "./types";
 import { darkenColor, hexToHsl, lightenColor } from "./constants";
@@ -13,13 +14,20 @@ import { useSimplifiedData } from "./contexts/SimplifiedDataContext";
 import { useAuth } from "./hooks/useAuth";
 import { useAuxiliaryData } from "./hooks/useAuxiliaryData";
 import { useAppRouting } from "./hooks/useAppRouting";
+import { persistQueryCache } from "./lib/queryCachePersistence";
 
 import PublicRoutes, { isPublicRoutePath } from "./routes/PublicRoutes";
 import AuthenticatedRoutes from "./routes/AuthenticatedRoutes";
 
 function App() {
+  const queryClient = useQueryClient();
   // ─── Authentication & Session ───────────────────────────────────────────
   const auth = useAuth();
+
+  useEffect(() => {
+    if (!auth.isAuthenticated || !auth.currentUser?.id) return;
+    return persistQueryCache(queryClient, auth.currentUser.id);
+  }, [auth.isAuthenticated, auth.currentUser?.id, queryClient]);
 
   // ─── Global Shared Data Context ─────────────────────────────────────────
   const data = useSimplifiedData();
@@ -27,7 +35,7 @@ function App() {
   // ─── Auxiliary Application Data & Notifications ─────────────────────────
   const auxData = useAuxiliaryData({
     appDataClientFeedback: data.clientFeedback || [],
-    appDataLoadedClientFeedback: !data.isLoading, // Simplified: loaded when not loading
+    appDataLoadedClientFeedback: !data.loading.clientFeedback,
     setClientFeedback: data.setClientFeedback, // Use the setter from simplified context
   });
 
@@ -73,7 +81,10 @@ function App() {
     setTeamProjectPayments: auxData.setTeamProjectPayments,
     setTeamPaymentsLoaded: auxData.setTeamPaymentsLoaded,
     onMarkNotificationRead: auxData.handleMarkAsRead,
-    appDataLoader: { loadTotals: data.refetchAll, loadClientFeedback: data.refetchAll },
+    appDataLoader: {
+      loadTotals: data.refetchDashboardStats,
+      loadClientFeedback: data.refetchClientFeedback,
+    },
   });
 
   // ─── Public & External Route Dispatcher ─────────────────────────────────
@@ -221,7 +232,7 @@ function App() {
                   hasPermission={auth.hasPermission}
                   handleNavigation={routing.handleNavigation}
                   onBackToDashboard={() =>
-                    React.startTransition(() => routing.setActiveView(ViewType.DASHBOARD))
+                    React.startTransition(() => routing.handleNavigation(ViewType.DASHBOARD))
                   }
                   currentUser={auth.currentUser}
                   users={auth.users}
@@ -274,23 +285,23 @@ function App() {
                       expense: 0,
                     },
                     loading: {
-                      clients: data.isLoading,
-                      projects: data.isLoading,
-                      teamMembers: data.isLoading,
-                      transactions: data.isLoading,
+                      clients: data.loading.clients,
+                      projects: data.loading.projects,
+                      teamMembers: data.loading.teamMembers,
+                      transactions: data.loading.transactions,
                     },
                     loaded: {
-                      clients: !data.isLoading,
-                      projects: !data.isLoading,
-                      teamMembers: !data.isLoading,
-                      transactions: !data.isLoading,
+                      clients: !data.loading.clients,
+                      projects: !data.loading.projects,
+                      teamMembers: !data.loading.teamMembers,
+                      transactions: !data.loading.transactions,
                     },
-                    loadTotals: data.refetchAll,
-                    loadClientFeedback: data.refetchAll,
-                    loadClients: data.refetchAll,
-                    loadProjects: data.refetchAll,
-                    loadTeamMembers: data.refetchAll,
-                    loadTransactions: data.refetchAll,
+                    loadTotals: data.refetchDashboardStats,
+                    loadClientFeedback: data.refetchClientFeedback,
+                    loadClients: data.refetchClients,
+                    loadProjects: data.refetchProjects,
+                    loadTeamMembers: data.refetchTeamMembers,
+                    loadTransactions: data.refetchTransactions,
                   }}
                   profile={auxData.profile}
                   setProfile={auxData.setProfile}

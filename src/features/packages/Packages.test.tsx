@@ -91,4 +91,99 @@ describe('Packages catalog layout', () => {
     expect(within(firstPackageCard as HTMLElement).getByText('#2')).toBeTruthy();
     expect(screen.getByText('Paket Kedua').closest('.group')?.textContent).toContain('#1');
   });
+
+  it('offers Add-On duplication with a destination-region selector', () => {
+    render(
+      <Packages
+        packages={[]}
+        setPackages={vi.fn()}
+        addOns={[{ id: 'addon-1', name: 'Album Tambahan', price: 900000, region: 'banten' }]}
+        setAddOns={vi.fn()}
+        projects={[]}
+        profile={{ publicPageConfig: { addOnOrder: ['addon-1'] } } as any}
+        setProfile={vi.fn()}
+        showNotification={vi.fn()}
+        initialAction={null}
+        setInitialAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplikat Add-On' }));
+    expect(screen.getByRole('heading', { name: 'Duplikasi Add-On ke Wilayah Lain' })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Banten' })[1]);
+    expect(screen.getByText(/Album Tambahan \(Banten\)/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Duplikasi Sekarang' })).toBeTruthy();
+  });
+
+  it('keeps Add-On order changes visible immediately while saving', () => {
+    const { rerender } = render(
+      <Packages
+        packages={[]}
+        setPackages={vi.fn()}
+        addOns={[
+          { id: 'addon-1', name: 'Add-On Pertama', price: 900000, region: 'vendor' },
+          { id: 'addon-2', name: 'Add-On Kedua', price: 1200000, region: 'vendor' },
+        ]}
+        setAddOns={vi.fn()}
+        projects={[]}
+        profile={{ publicPageConfig: { addOnOrder: ['addon-1', 'addon-2'] } } as any}
+        setProfile={vi.fn()}
+        showNotification={vi.fn()}
+        initialAction={null}
+        setInitialAction={vi.fn()}
+      />,
+    );
+
+    const firstAddOnCard = screen.getByText('Add-On Pertama').closest('article');
+    expect(firstAddOnCard).toBeTruthy();
+    fireEvent.click(within(firstAddOnCard as HTMLElement).getByRole('button', { name: 'Pindah ke Bawah' }));
+
+    expect(within(firstAddOnCard as HTMLElement).getByText('#2')).toBeTruthy();
+    expect(screen.getByText('Add-On Kedua').closest('article')?.textContent).toContain('#1');
+
+    rerender(
+      <Packages
+        packages={[]}
+        setPackages={vi.fn()}
+        addOns={[
+          { id: 'addon-1', name: 'Add-On Pertama', price: 900000, region: 'vendor' },
+          { id: 'addon-2', name: 'Add-On Kedua', price: 1200000, region: 'vendor' },
+        ]}
+        setAddOns={vi.fn()}
+        projects={[]}
+        profile={{ publicPageConfig: { addOnOrder: ['addon-1', 'addon-2'] } } as any}
+        setProfile={vi.fn()}
+        showNotification={vi.fn()}
+        initialAction={null}
+        setInitialAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Add-On Pertama').closest('article')?.textContent).toContain('#2');
+    expect(screen.getByText('Add-On Kedua').closest('article')?.textContent).toContain('#1');
+  });
+
+  it('keeps Add-Ons missing from the saved order in a stable alphabetical position', () => {
+    render(
+      <Packages
+        packages={[]}
+        setPackages={vi.fn()}
+        addOns={[
+          { id: 'addon-z', name: 'Zulu', price: 900000, region: 'vendor' },
+          { id: 'addon-a', name: 'Alpha', price: 1200000, region: 'vendor' },
+          { id: 'addon-pinned', name: 'Pilihan Utama', price: 1500000, region: 'vendor' },
+        ]}
+        setAddOns={vi.fn()}
+        projects={[]}
+        profile={{ publicPageConfig: { addOnOrder: ['addon-pinned'] } } as any}
+        setProfile={vi.fn()}
+        showNotification={vi.fn()}
+        initialAction={null}
+        setInitialAction={vi.fn()}
+      />,
+    );
+
+    const cards = screen.getAllByText(/Pilihan Utama|Alpha|Zulu/).map(element => element.closest('article'));
+    expect(cards.map(card => card?.querySelector('h3')?.textContent)).toEqual(['Pilihan Utama', 'Alpha', 'Zulu']);
+  });
 });

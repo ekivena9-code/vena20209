@@ -5,6 +5,7 @@ import App from './App';
 import ErrorBoundary from './shared/ui/ErrorBoundary';
 import { SimplifiedDataProvider } from './contexts/SimplifiedDataContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { getCurrentCacheScope, restoreQueryCache } from './lib/queryCachePersistence';
 import './index.css';
 import '../app/index.css';
 import './styles/print.css';
@@ -34,25 +35,45 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <SimplifiedDataProvider>
-        <ErrorBoundary>
-          <Suspense
-            fallback={
-              <div className="min-h-screen flex items-center justify-center bg-brand-bg text-brand-text-secondary">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 border-4 border-brand-accent/20 border-t-brand-accent rounded-full animate-spin" />
-                  <span className="text-sm font-medium">Memuat Vena Pictures...</span>
+
+async function startApp() {
+  const cacheScope = getCurrentCacheScope();
+  if (cacheScope) {
+    try {
+      await restoreQueryCache(queryClient, cacheScope);
+    } catch (error) {
+      console.warn('[QueryCache] Failed to restore local cache; loading from Supabase.', error);
+    }
+  }
+
+  root.render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <SimplifiedDataProvider>
+          <ErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="min-h-screen flex items-center justify-center bg-brand-bg text-brand-text-secondary">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-4 border-brand-accent/20 border-t-brand-accent rounded-full animate-spin" />
+                    <span className="text-sm font-medium">Memuat Vena Pictures...</span>
+                  </div>
                 </div>
-              </div>
-            }
-          >
-            <App />
-          </Suspense>
-        </ErrorBoundary>
-      </SimplifiedDataProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+              }
+            >
+              <App />
+            </Suspense>
+          </ErrorBoundary>
+        </SimplifiedDataProvider>
+      </QueryClientProvider>
+    </React.StrictMode>,
+  );
+
+  if (cacheScope) {
+    window.setTimeout(() => {
+      void queryClient.invalidateQueries({ refetchType: 'active' });
+    }, 0);
+  }
+}
+
+void startApp();

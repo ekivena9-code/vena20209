@@ -55,10 +55,24 @@ interface SimplifiedDataContextType {
   totals: ReturnType<typeof useDashboardStats>['data'];
 
   isLoading: boolean;
+  loading: {
+    clients: boolean;
+    projects: boolean;
+    teamMembers: boolean;
+    transactions: boolean;
+    clientFeedback: boolean;
+    totals: boolean;
+  };
   isError: boolean;
   error: Error | null;
 
   refetchAll: () => Promise<void>;
+  refetchClients: () => Promise<void>;
+  refetchProjects: () => Promise<void>;
+  refetchTeamMembers: () => Promise<void>;
+  refetchTransactions: () => Promise<void>;
+  refetchClientFeedback: () => Promise<void>;
+  refetchDashboardStats: () => Promise<void>;
 
   // Cache writers — exposed as React.Dispatch<SetStateAction<T[]>> so the
   // existing 525 call-sites that perform optimistic updates keep working.
@@ -141,20 +155,39 @@ export const SimplifiedDataProvider: React.FC<{ children: React.ReactNode }> = (
   const setAddOns = useCallback(makeCacheSetter<AddOn>(queryClient, 'addOns'), [queryClient]);
   const setClientFeedback = useCallback(makeCacheSetter<ClientFeedback>(queryClient, 'clientFeedback'), [queryClient]);
 
+  const refetchClients = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['clients'] });
+  }, [queryClient]);
+  const refetchProjects = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['projects'] });
+  }, [queryClient]);
+  const refetchTeamMembers = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['teamMembers'] });
+  }, [queryClient]);
+  const refetchTransactions = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+  }, [queryClient]);
+  const refetchClientFeedback = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['clientFeedback'] });
+  }, [queryClient]);
+  const refetchDashboardStats = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+  }, [queryClient]);
+
   const refetchAll = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['clients'] }),
-      queryClient.invalidateQueries({ queryKey: ['projects'] }),
-      queryClient.invalidateQueries({ queryKey: ['teamMembers'] }),
-      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      refetchClients(),
+      refetchProjects(),
+      refetchTeamMembers(),
+      refetchTransactions(),
       queryClient.invalidateQueries({ queryKey: ['leads'] }),
       queryClient.invalidateQueries({ queryKey: ['cards'] }),
       queryClient.invalidateQueries({ queryKey: ['pockets'] }),
       queryClient.invalidateQueries({ queryKey: ['packages'] }),
       queryClient.invalidateQueries({ queryKey: ['addOns'] }),
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] }),
-      queryClient.invalidateQueries({ queryKey: ['clientFeedback'] }),
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] }),
+      refetchClientFeedback(),
+      refetchDashboardStats(),
       queryClient.invalidateQueries({ queryKey: ['contracts'] }),
       queryClient.invalidateQueries({ queryKey: ['promoCodes'] }),
       queryClient.invalidateQueries({ queryKey: ['profile'] }),
@@ -162,7 +195,7 @@ export const SimplifiedDataProvider: React.FC<{ children: React.ReactNode }> = (
       queryClient.invalidateQueries({ queryKey: ['teamPaymentRecords'] }),
       queryClient.invalidateQueries({ queryKey: ['notifications'] }),
     ]);
-  }, [queryClient]);
+  }, [queryClient, refetchClients, refetchProjects, refetchTeamMembers, refetchTransactions, refetchClientFeedback, refetchDashboardStats]);
 
   // ─── Realtime: Supabase → React Query cache (no double state) ──────────
   useEffect(() => {
@@ -305,9 +338,23 @@ export const SimplifiedDataProvider: React.FC<{ children: React.ReactNode }> = (
     calendarEvents,
     totals,
     isLoading,
+    loading: {
+      clients: loadingClients,
+      projects: loadingProjects,
+      teamMembers: loadingTeamMembers,
+      transactions: loadingTransactions,
+      clientFeedback: loadingClientFeedback,
+      totals: loadingTotals,
+    },
     isError,
     error,
     refetchAll,
+    refetchClients,
+    refetchProjects,
+    refetchTeamMembers,
+    refetchTransactions,
+    refetchClientFeedback,
+    refetchDashboardStats,
     setClients,
     setProjects,
     setTeamMembers,
@@ -321,7 +368,10 @@ export const SimplifiedDataProvider: React.FC<{ children: React.ReactNode }> = (
   }), [
     clients, projects, teamMembers, transactions, leads, cards, pockets,
     packages, addOns, clientFeedback, calendarEvents, totals,
-    isLoading, isError, error, refetchAll,
+    isLoading, loadingClients, loadingProjects, loadingTeamMembers, loadingTransactions,
+    loadingClientFeedback, loadingTotals, isError, error, refetchAll,
+    refetchClients, refetchProjects, refetchTeamMembers, refetchTransactions,
+    refetchClientFeedback, refetchDashboardStats,
     setClients, setProjects, setTeamMembers, setTransactions, setLeads,
     setCards, setPockets, setPackages, setAddOns, setClientFeedback,
   ]);

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { User, ViewType } from "../types";
 import { LAST_ROUTE_STORAGE_KEY } from "../routes/routesConfig";
 import { supabase } from "../lib/supabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
+import { restoreQueryCache } from "../lib/queryCachePersistence";
+import { resolveAuthenticatedViewFromHash } from "./useAppRouting";
 
 
 
@@ -12,12 +15,13 @@ export interface UseAuthReturn {
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
   users: User[];
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
-  handleLoginSuccess: (user: User) => void;
+  handleLoginSuccess: (user: User) => Promise<void>;
   handleLogout: () => void;
   hasPermission: (view: ViewType) => boolean;
 }
 
 export function useAuth(): UseAuthReturn {
+  const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       const storedValue = window.localStorage.getItem("weddfin-isAuthenticated");
@@ -53,17 +57,27 @@ export function useAuth(): UseAuthReturn {
   }, [currentUser]);
 
 
-  const handleLoginSuccess = useCallback((user: User) => {
+  const handleLoginSuccess = useCallback(async (user: User) => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    try {
+      await restoreQueryCache(queryClient, user.id);
+    } catch (error) {
+      console.warn('[QueryCache] Failed to restore user cache after login.', error);
+    }
     setIsAuthenticated(true);
     setCurrentUser(user);
     try {
+      const currentHash = window.location.hash;
+      if (resolveAuthenticatedViewFromHash(currentHash)) {
+        return;
+      }
       const last = window.localStorage.getItem(LAST_ROUTE_STORAGE_KEY);
       if (
         last &&
         typeof last === "string" &&
         last.startsWith("#/") &&
-        !last.startsWith("#/home") &&
-        !last.startsWith("#/login")
+        resolveAuthenticatedViewFromHash(last)
       ) {
         window.location.hash = last;
         return;
@@ -73,7 +87,7 @@ export function useAuth(): UseAuthReturn {
     }
 
     window.location.hash = "#/dashboard";
-  }, []);
+  }, [queryClient]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -82,13 +96,14 @@ export function useAuth(): UseAuthReturn {
       console.warn("[Supabase] Logout error:", e);
     }
     
+    queryClient.clear();
     setIsAuthenticated(false);
     setCurrentUser(null);
     try {
       window.localStorage.removeItem(LAST_ROUTE_STORAGE_KEY);
     } catch {}
     window.location.hash = "#/home";
-  }, []);
+  }, [queryClient]);
 
   const hasPermission = useCallback(
     (view: ViewType) => {

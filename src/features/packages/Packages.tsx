@@ -28,6 +28,7 @@ import { upsertProfile } from '../../services/profile';
 import { PackageCard } from './components/PackageCard';
 import { PackageModal } from './components/PackageModal';
 import { DuplicatePackageModal } from './components/DuplicatePackageModal';
+import { DuplicateAddOnModal } from './components/DuplicateAddOnModal';
 import { SharePackageModal } from './components/SharePackageModal';
 import { PackageGuideModal } from './components/PackageGuideModal';
 import { WorkflowModal } from './components/WorkflowModal';
@@ -242,6 +243,7 @@ const AddOnEditorModal: React.FC<AddOnEditorModalProps> = ({ isOpen, addOn, regi
 interface CatalogItemCardProps {
     addOn: AddOn;
     onEdit: (addOn: AddOn) => void;
+    onDuplicate: (addOn: AddOn) => void;
     onDelete: (id: string) => void;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
@@ -253,6 +255,7 @@ interface CatalogItemCardProps {
 const CatalogItemCard: React.FC<CatalogItemCardProps> = ({
     addOn,
     onEdit,
+    onDuplicate,
     onDelete,
     onMoveUp,
     onMoveDown,
@@ -302,6 +305,7 @@ const CatalogItemCard: React.FC<CatalogItemCardProps> = ({
             <p className="font-bold text-sm text-[#5D87FF] truncate">{formatCurrency(addOn.price)}</p>
             <div className="flex items-center gap-1 flex-shrink-0">
                 <button type="button" onClick={() => onEdit(addOn)} className="w-8 h-8 rounded-lg text-[#5A6A85] hover:text-[#5D87FF] hover:bg-[#5D87FF]/10 flex items-center justify-center" title="Edit Add-On"><Pencil className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => onDuplicate(addOn)} className="w-8 h-8 rounded-lg text-[#5A6A85] hover:text-[#5D87FF] hover:bg-[#5D87FF]/10 flex items-center justify-center" title="Duplikat Add-On"><Copy className="w-3.5 h-3.5" /></button>
                 <button type="button" onClick={() => onDelete(addOn.id)} className="w-8 h-8 rounded-lg text-[#5A6A85] hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center" title="Hapus Add-On"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
         </div>
@@ -329,8 +333,53 @@ export const Packages: React.FC<PackagesProps> = ({
     const [addOnOrder, setAddOnOrder] = useState<string[]>(() => profile.publicPageConfig?.addOnOrder || []);
     const packageOrderRef = React.useRef(packageOrder);
     const addOnOrderRef = React.useRef(addOnOrder);
-    const packageOrderSaveInProgress = React.useRef(false);
-    const addOnOrderSaveInProgress = React.useRef(false);
+    const packageOrderDirty = React.useRef(false);
+    const addOnOrderDirty = React.useRef(false);
+    const profileRef = React.useRef(profile);
+    profileRef.current = profile;
+    const catalogOrderSaveState = React.useRef({ isSaving: false, pending: false });
+
+    const persistCatalogOrder = () => {
+        catalogOrderSaveState.current.pending = true;
+        if (catalogOrderSaveState.current.isSaving) return;
+
+        catalogOrderSaveState.current.isSaving = true;
+        void (async () => {
+            let didSave = false;
+            try {
+                while (catalogOrderSaveState.current.pending) {
+                    catalogOrderSaveState.current.pending = false;
+                    const packageOrderToSave = [...packageOrderRef.current];
+                    const addOnOrderToSave = [...addOnOrderRef.current];
+                    const currentProfile = profileRef.current;
+
+                    await upsertProfile({
+                        id: currentProfile.id,
+                        publicPageConfig: {
+                            ...currentProfile.publicPageConfig,
+                            packageOrder: packageOrderToSave,
+                            addOnOrder: addOnOrderToSave,
+                        },
+                    });
+                    didSave = true;
+
+                    if (
+                        packageOrderToSave.join('\0') !== packageOrderRef.current.join('\0') ||
+                        addOnOrderToSave.join('\0') !== addOnOrderRef.current.join('\0')
+                    ) {
+                        catalogOrderSaveState.current.pending = true;
+                    }
+                }
+                if (didSave) showNotification('Urutan katalog berhasil diperbarui.');
+            } catch (error) {
+                console.error('[Packages.order] Failed to save catalog order:', error);
+                catalogOrderSaveState.current.pending = false;
+                showNotification('Gagal menyimpan urutan. Posisi tetap tampil, tetapi belum tersimpan ke server.');
+            } finally {
+                catalogOrderSaveState.current.isSaving = false;
+            }
+        })();
+    };
 
     // ── Modal States ──
     const [packageEditMode, setPackageEditMode] = useState<string | null>(null);
@@ -338,6 +387,7 @@ export const Packages: React.FC<PackagesProps> = ({
     const [isSavingPackage, setIsSavingPackage] = useState(false);
     const isSavingPackageRef = React.useRef(false);
     const [copySourcePkg, setCopySourcePkg] = useState<Package | null>(null);
+    const [copySourceAddOn, setCopySourceAddOn] = useState<AddOn | null>(null);
     const [isAddOnFormOpen, setIsAddOnFormOpen] = useState(false);
     const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -388,23 +438,83 @@ export const Packages: React.FC<PackagesProps> = ({
 
     useEffect(() => {
         const savedPackageOrder = profile.publicPageConfig?.packageOrder || [];
+        if (savedPackageOrder.join('\0') === packageOrderRef.current.join('\0')) {
+            return;
+        }
+        if (packageOrderDirty.current || catalogOrderSaveState.current.isSaving || catalogOrderSaveState.current.pending) return;
         packageOrderRef.current = savedPackageOrder;
         setPackageOrder(savedPackageOrder);
     }, [profile.publicPageConfig?.packageOrder]);
 
     useEffect(() => {
         const savedAddOnOrder = profile.publicPageConfig?.addOnOrder || [];
+        if (savedAddOnOrder.join('\0') === addOnOrderRef.current.join('\0')) {
+            return;
+        }
+        if (addOnOrderDirty.current || catalogOrderSaveState.current.isSaving || catalogOrderSaveState.current.pending) return;
         addOnOrderRef.current = savedAddOnOrder;
         setAddOnOrder(savedAddOnOrder);
     }, [profile.publicPageConfig?.addOnOrder]);
 
+    const appendToOrder = (kind: 'package' | 'addOn', id: string) => {
+        const orderRef = kind === 'package' ? packageOrderRef : addOnOrderRef;
+        const items = kind === 'package' ? packages : addOns;
+        const nextOrder = [...orderRef.current];
+        items.forEach(item => {
+            if (!nextOrder.includes(item.id)) nextOrder.push(item.id);
+        });
+        if (!nextOrder.includes(id)) nextOrder.push(id);
+        orderRef.current = nextOrder;
+        if (kind === 'package') {
+            packageOrderDirty.current = true;
+            setPackageOrder(nextOrder);
+        } else {
+            addOnOrderDirty.current = true;
+            setAddOnOrder(nextOrder);
+        }
+        setProfile(prev => ({
+            ...prev,
+            publicPageConfig: {
+                ...prev.publicPageConfig,
+                packageOrder: kind === 'package' ? nextOrder : packageOrderRef.current,
+                addOnOrder: kind === 'addOn' ? nextOrder : addOnOrderRef.current,
+            },
+        }));
+        persistCatalogOrder();
+    };
+
+    const removeFromOrder = (kind: 'package' | 'addOn', id: string) => {
+        const orderRef = kind === 'package' ? packageOrderRef : addOnOrderRef;
+        const nextOrder = orderRef.current.filter(itemId => itemId !== id);
+        orderRef.current = nextOrder;
+        if (kind === 'package') {
+            packageOrderDirty.current = true;
+            setPackageOrder(nextOrder);
+        } else {
+            addOnOrderDirty.current = true;
+            setAddOnOrder(nextOrder);
+        }
+        setProfile(prev => ({
+            ...prev,
+            publicPageConfig: {
+                ...prev.publicPageConfig,
+                packageOrder: kind === 'package' ? nextOrder : packageOrderRef.current,
+                addOnOrder: kind === 'addOn' ? nextOrder : addOnOrderRef.current,
+            },
+        }));
+        persistCatalogOrder();
+    };
+
     // Helper: sort items by saved order array
-    const sortByOrder = <T extends { id: string }>(items: T[], order: string[]): T[] => {
+    const sortByOrder = <T extends { id: string; name?: string }>(items: T[], order: string[]): T[] => {
         if (!order || order.length === 0) return items;
         const orderMap = new Map(order.map((id, idx) => [id, idx]));
         return [...items].sort((a, b) => {
             const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : Infinity;
             const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : Infinity;
+            if (idxA === Infinity && idxB === Infinity) {
+                return (a.name || a.id).localeCompare(b.name || b.id);
+            }
             return idxA - idxB;
         });
     };
@@ -641,6 +751,7 @@ export const Packages: React.FC<PackagesProps> = ({
             } else {
                 const created = await createPackage(packageData as any);
                 setPackages(prev => [...prev, created]);
+                appendToOrder('package', created.id);
                 showNotification('Paket layanan baru berhasil ditambahkan.');
             }
             setPackageEditMode(null);
@@ -666,6 +777,7 @@ export const Packages: React.FC<PackagesProps> = ({
         try {
             await deletePackage(pkgId);
             setPackages(prev => prev.filter(p => p.id !== pkgId));
+            removeFromOrder('package', pkgId);
             showNotification('Paket layanan berhasil dihapus.');
         } catch (err) {
             console.error(err);
@@ -683,7 +795,20 @@ export const Packages: React.FC<PackagesProps> = ({
         };
         const created = await createPackage(newPkg as any);
         setPackages(prev => [...prev, created]);
+        appendToOrder('package', created.id);
         showNotification(`Paket berhasil diduplikasi ke wilayah ${titleCase(targetRegion)}.`);
+    };
+
+    const handleDuplicateAddOn = async (targetRegion: string) => {
+        if (!copySourceAddOn) return;
+        const created = await createAddOn({
+            name: `${copySourceAddOn.name} (${titleCase(targetRegion)})`,
+            price: copySourceAddOn.price,
+            region: targetRegion,
+        } as any);
+        setAddOns(prev => [...prev, created]);
+        appendToOrder('addOn', created.id);
+        showNotification(`Add-On berhasil diduplikasi ke wilayah ${titleCase(targetRegion)}.`);
     };
 
     const handleShareSinglePackage = async (pkg: Package) => {
@@ -738,6 +863,7 @@ export const Packages: React.FC<PackagesProps> = ({
                 region: addOnData.region,
             } as any);
             setAddOns(prev => [...prev, created]);
+            appendToOrder('addOn', created.id);
             showNotification('Add-on baru berhasil ditambahkan.');
         }
     };
@@ -754,6 +880,7 @@ export const Packages: React.FC<PackagesProps> = ({
         try {
             await deleteAddOn(addOnId);
             setAddOns(prev => prev.filter(p => p.id !== addOnId));
+            removeFromOrder('addOn', addOnId);
             showNotification('Add-on berhasil dihapus.');
         } catch (err) {
             console.error(err);
@@ -801,54 +928,17 @@ export const Packages: React.FC<PackagesProps> = ({
 
         [order[idxA], order[idxB]] = [order[idxB], order[idxA]];
         packageOrderRef.current = order;
+        packageOrderDirty.current = true;
         setPackageOrder(order);
         setProfile(prev => ({
             ...prev,
             publicPageConfig: {
                 ...prev.publicPageConfig,
                 packageOrder: order,
+                addOnOrder: addOnOrderRef.current,
             },
         }));
-
-        if (packageOrderSaveInProgress.current) return;
-        packageOrderSaveInProgress.current = true;
-        void (async () => {
-            let savedOrder: string[] | undefined;
-            try {
-                while (!savedOrder || savedOrder.join('\0') !== packageOrderRef.current.join('\0')) {
-                    const orderToSave = [...packageOrderRef.current];
-                    try {
-                        await upsertProfile({
-                            id: profile.id,
-                            publicPageConfig: {
-                                ...profile.publicPageConfig,
-                                packageOrder: orderToSave,
-                            },
-                        });
-                        savedOrder = orderToSave;
-                    } catch (error) {
-                        if (orderToSave.join('\0') !== packageOrderRef.current.join('\0')) continue;
-                        throw error;
-                    }
-                }
-                showNotification('Urutan paket berhasil diperbarui.');
-            } catch (err) {
-                console.error('Failed to save package order:', err);
-                const fallbackOrder = savedOrder || profile.publicPageConfig?.packageOrder || [];
-                packageOrderRef.current = fallbackOrder;
-                setPackageOrder(fallbackOrder);
-                setProfile(prev => ({
-                    ...prev,
-                    publicPageConfig: {
-                        ...prev.publicPageConfig,
-                        packageOrder: fallbackOrder,
-                    },
-                }));
-                showNotification('Gagal menyimpan urutan paket.');
-            } finally {
-                packageOrderSaveInProgress.current = false;
-            }
-        })();
+        persistCatalogOrder();
     };
 
     const handleMoveAddOn = (addOnId: string, direction: 'up' | 'down', groupItems?: AddOn[]) => {
@@ -872,54 +962,17 @@ export const Packages: React.FC<PackagesProps> = ({
 
         [order[idxA], order[idxB]] = [order[idxB], order[idxA]];
         addOnOrderRef.current = order;
+        addOnOrderDirty.current = true;
         setAddOnOrder(order);
         setProfile(prev => ({
             ...prev,
             publicPageConfig: {
                 ...prev.publicPageConfig,
+                packageOrder: packageOrderRef.current,
                 addOnOrder: order,
             },
         }));
-
-        if (addOnOrderSaveInProgress.current) return;
-        addOnOrderSaveInProgress.current = true;
-        void (async () => {
-            let savedOrder: string[] | undefined;
-            try {
-                while (!savedOrder || savedOrder.join('\0') !== addOnOrderRef.current.join('\0')) {
-                    const orderToSave = [...addOnOrderRef.current];
-                    try {
-                        await upsertProfile({
-                            id: profile.id,
-                            publicPageConfig: {
-                                ...profile.publicPageConfig,
-                                addOnOrder: orderToSave,
-                            },
-                        });
-                        savedOrder = orderToSave;
-                    } catch (error) {
-                        if (orderToSave.join('\0') !== addOnOrderRef.current.join('\0')) continue;
-                        throw error;
-                    }
-                }
-                showNotification('Urutan add-on berhasil diperbarui.');
-            } catch (err) {
-                console.error('Failed to save add-on order:', err);
-                const fallbackOrder = savedOrder || profile.publicPageConfig?.addOnOrder || [];
-                addOnOrderRef.current = fallbackOrder;
-                setAddOnOrder(fallbackOrder);
-                setProfile(prev => ({
-                    ...prev,
-                    publicPageConfig: {
-                        ...prev.publicPageConfig,
-                        addOnOrder: fallbackOrder,
-                    },
-                }));
-                showNotification('Gagal menyimpan urutan add-on.');
-            } finally {
-                addOnOrderSaveInProgress.current = false;
-            }
-        })();
+        persistCatalogOrder();
     };
 
     // ── Package Terms & Conditions Handler (for Public Catalog) ──
@@ -1277,6 +1330,7 @@ export const Packages: React.FC<PackagesProps> = ({
                                                     key={`addon-${addOn.id}`}
                                                     addOn={addOn}
                                                     onEdit={handleOpenEditAddOn}
+                                                    onDuplicate={setCopySourceAddOn}
                                                     onDelete={handleDeleteAddOn}
                                                     onMoveUp={() => handleMoveAddOn(addOn.id, 'up', group.items)}
                                                     onMoveDown={() => handleMoveAddOn(addOn.id, 'down', group.items)}
@@ -1390,6 +1444,7 @@ export const Packages: React.FC<PackagesProps> = ({
                                                 ) : (
                                                     <>
                                                         <button type="button" onClick={() => handleOpenEditAddOn(item.addOn)} className="p-2 rounded-lg text-[#5A6A85] hover:bg-[#5D87FF]/10 hover:text-[#5D87FF]" title="Edit Add-On"><Pencil className="w-4 h-4" /></button>
+                                                        <button type="button" onClick={() => setCopySourceAddOn(item.addOn)} className="p-2 rounded-lg text-[#5A6A85] hover:bg-[#5D87FF]/10 hover:text-[#5D87FF]" title="Duplikat Add-On"><Copy className="w-4 h-4" /></button>
                                                         <button type="button" onClick={() => handleDeleteAddOn(item.addOn.id)} className="p-2 rounded-lg text-[#5A6A85] hover:bg-rose-50 hover:text-rose-600" title="Hapus Add-On"><Trash2 className="w-4 h-4" /></button>
                                                     </>
                                                 )}
@@ -1439,6 +1494,15 @@ export const Packages: React.FC<PackagesProps> = ({
                     onClose={() => setCopySourcePkg(null)}
                     unionRegions={unionRegions}
                     onDuplicate={handleDuplicatePackage}
+                />
+            )}
+
+            {copySourceAddOn && (
+                <DuplicateAddOnModal
+                    addOn={copySourceAddOn}
+                    onClose={() => setCopySourceAddOn(null)}
+                    regions={unionRegions}
+                    onDuplicate={handleDuplicateAddOn}
                 />
             )}
 
