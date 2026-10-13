@@ -86,7 +86,7 @@ const TeamUnpaidTab: React.FC<TeamUnpaidTabProps> = ({
                     <span className="font-bold text-[#2A3547]">
                         {filteredUnpaidPayments.length}
                     </span>{' '}
-                    tagihan tertunda
+                    pembayaran tertunda
                 </div>
             </div>
 
@@ -101,7 +101,7 @@ const TeamUnpaidTab: React.FC<TeamUnpaidTabProps> = ({
                             Semua Fee Sudah Lunas!
                         </h3>
                         <p className="text-sm text-[#5A6A85]">
-                            Tidak ada tagihan fee Tim atau Vendor yang menunggu pembayaran dalam periode ini.
+                            Tidak ada fee Tim atau Vendor yang menunggu pembayaran dalam periode ini.
                         </p>
                     </div>
                 ) : (

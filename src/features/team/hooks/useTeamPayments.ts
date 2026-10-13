@@ -254,7 +254,7 @@ export const useTeamPayments = ({
             const totalDue = selectedPayments.reduce((sum, payment) => sum + payment.fee, 0);
             if (actualPaidAmount > totalDue) {
                 alert(
-                    `Jumlah bayar (${formatCurrency(actualPaidAmount)}) melebihi total tagihan (${formatCurrency(totalDue)}).`,
+                    `Jumlah bayar (${formatCurrency(actualPaidAmount)}) melebihi total pembayaran (${formatCurrency(totalDue)}).`,
                 );
                 return;
             }

@@ -159,7 +159,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
                             <div className="flex items-center gap-2">
                                 <AlertCircleIcon className="w-4 h-4 text-orange-500" />
                                 <span className="text-sm font-semibold text-orange-500">
-                                    Sisa Tagihan
+                                    Sisa Pembayaran
                                 </span>
                             </div>
                             <span className="text-sm font-bold text-orange-500">

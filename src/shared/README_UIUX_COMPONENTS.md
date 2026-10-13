@@ -51,7 +51,7 @@ interface ProjectCardProps {
 
 #### Visual Features:
 - **Progress Bar**: Shows completion percentage based on status
-- **Payment Badge**: Green (Lunas) or Orange (Sisa Tagihan)
+- **Payment Badge**: Green (Lunas) or Orange (Sisa Pembayaran)
 - **Urgency Indicator**: Shows days until event (orange if ≤7 days)
 - **VIP Badge**: Yellow star badge for VIP clients
 - **Status Dropdown**: Click to change status without opening form

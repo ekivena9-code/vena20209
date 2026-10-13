@@ -128,7 +128,7 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
         {/* Billing Grid */}
         <div className="invoice-section avoid-break grid grid-cols-2 gap-2.5 sm:gap-6 border-b border-slate-100 pb-2.5 sm:pb-4 print:border-slate-200">
           <div>
-            <h4 className="invoice-section-label text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 sm:mb-2 print:text-slate-500">Tagihan Untuk</h4>
+            <h4 className="invoice-section-label text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 sm:mb-2 print:text-slate-500">Penerima Invoice</h4>
             <div className="space-y-0.5 sm:space-y-1">
               <p className="invoice-party-name text-[10px] sm:text-base font-bold text-slate-800 print:text-black">{project.clientName}</p>
               {client && (
@@ -308,7 +308,7 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
               <span>{formatCurrency(project.amountPaid || 0)}</span>
             </div>
             <div className="invoice-balance-due flex justify-between items-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 border sm:border-2 border-brand-accent/20 rounded-md mt-0.5 sm:mt-1 bg-brand-accent/5 print:bg-white print:border-slate-800">
-              <span className="invoice-total-label text-[7px] sm:text-[11px] font-black text-brand-accent uppercase print:text-black">Sisa Tagihan</span>
+              <span className="invoice-total-label text-[7px] sm:text-[11px] font-black text-brand-accent uppercase print:text-black">Sisa Pembayaran</span>
               <span className="invoice-balance-val text-[9px] sm:text-base font-black text-brand-accent print:text-black tracking-tight">{formatCurrency(project.totalCost - (project.amountPaid || 0))}</span>
             </div>
           </div>

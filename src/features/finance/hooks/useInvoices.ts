@@ -314,7 +314,7 @@ export function useInvoices({
       } else if (deleteConfirm.kind === 'slip-gaji') {
         await deleteTeamPaymentRecord(deleteConfirm.id);
         onDeleteTeamPaymentRecord?.(deleteConfirm.id);
-        showNotification('Slip gaji berhasil dihapus.');
+        showNotification('Pembayaran tim berhasil dihapus.');
       }
     } catch (err) {
       console.error('[useInvoices] delete error', err);

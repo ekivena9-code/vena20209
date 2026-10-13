@@ -37,7 +37,7 @@ export interface ClientExportItem {
 }
 
 export const exportClientsToCSV = (clientData: ClientExportItem[]) => {
-    const headers = ['Nama', 'Email', 'Telepon', 'Status', 'Total Package', 'Sisa Tagihan', 'Package Terbaru'];
+    const headers = ['Nama', 'Email', 'Telepon', 'Status', 'Total Package', 'Sisa Pembayaran', 'Package Terbaru'];
     const data = clientData.map(client => [
         `"${client.name.replace(/"/g, '""')}"`,
         client.email,

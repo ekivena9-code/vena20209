@@ -52,7 +52,7 @@ export const ClientStatsCards: React.FC<ClientStatsCardsProps> = ({
                     icon={<AlertCircleIcon className="w-6 h-6" />}
                     title="Total Piutang"
                     value={clientStats.totalReceivables}
-                    subtitle="Tagihan belum terbayar"
+                    subtitle="Pembayaran belum lunas"
                     iconColorVariant="error"
                     compactOnMobile
                     onClick={() => setActiveStatModal('receivables')}
@@ -154,9 +154,9 @@ export const ClientStatsCards: React.FC<ClientStatsCardsProps> = ({
                 icon={<AlertCircleIcon className="w-6 h-6" />}
                 title="Total Piutang"
                 value={clientStats.totalReceivables}
-                subtitle="Tagihan belum terbayar"
+                subtitle="Pembayaran belum lunas"
                 colorVariant="orange"
-                description={`Total piutang dari semua pengantin yang belum dibayar.\n\nPiutang: ${clientStats.totalReceivables}\n\nSegera tagih untuk menjaga cash flow bisnis Anda.`}
+                description={`Total piutang dari semua pengantin yang belum dibayar.\n\nPiutang: ${clientStats.totalReceivables}\n\nSegera tindak lanjuti pembayaran untuk menjaga cash flow bisnis Anda.`}
             >
                 <div className="space-y-3">
                     <h4 className="font-bold text-[#2A3547] border-b border-[#EAEFF4] pb-2 text-sm">Pengantin dengan Piutang</h4>

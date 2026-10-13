@@ -84,7 +84,7 @@ export const ClientReceiptDocument: React.FC<ClientReceiptDocumentProps> = ({
                         <div className="p-2.5 sm:p-4 bg-blue-50/50 border border-blue-100 rounded-lg text-[8.5px] sm:text-[12px] text-blue-700">
                             <p className="font-bold mb-0.5 sm:mb-1">Progres Acara Pernikahan Pengantin: {project.projectName}</p>
                             <div className="flex justify-between">
-                                <span>Total Tagihan: {formatCurrency(project.totalCost)}</span>
+                                <span>Total Pembayaran: {formatCurrency(project.totalCost)}</span>
                                 <span className="font-bold">Sisa: {formatCurrency(project.totalCost - project.amountPaid)}</span>
                             </div>
                         </div>

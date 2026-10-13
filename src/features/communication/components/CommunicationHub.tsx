@@ -46,7 +46,7 @@ const MESSAGE_TEMPLATES: MessageTemplate[] = [
 Semoga sehat selalu. Kami ingin mengingatkan perihal sisa pembayaran untuk Acara Pernikahan Anda.
 
 Acara Pernikahan: {projectName}
-Sisa Tagihan: {remainingAmount}
+Sisa Pembayaran: {remainingAmount}
 Jatuh Tempo: {dueDate}
 
 Pembayaran dapat ditransfer ke:
@@ -132,7 +132,7 @@ Terima kasih,
     },
     {
         id: 'detailed_bill',
-        title: 'Rekap Tagihan Detil',
+        title: 'Rekap Pembayaran',
         category: 'reminder',
         template: `Halo {clientName},
 
@@ -142,9 +142,9 @@ Berikut rinciannya:
 - Acara Pernikahan: *{projectName}*
 - Paket: *{packageName}*
 
-Sisa Tagihan: *{remainingAmount}*
+Sisa Pembayaran: *{remainingAmount}*
 
-Total Sisa Tagihan: *{remainingAmount}*
+Total Sisa Pembayaran: *{remainingAmount}*
 
 Anda dapat melihat rincian invoice dan riwayat pembayaran melalui Portal Pengantin Anda di sini:
 {portalLink}

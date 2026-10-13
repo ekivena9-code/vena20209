@@ -243,7 +243,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               {/* Bill To */}
               <div className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Ditagihkan Kepada (Pengantin):
+                  Penerima Invoice (Pengantin):
                 </span>
                 <p className="text-base font-bold text-slate-900">{formData.clientName || 'Nama Pengantin Belum Diisi'}</p>
                 <div className="text-xs text-slate-600 space-y-1">
@@ -415,7 +415,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   <span className="font-bold text-[#166534]">{formatCurrency(formData.amountPaid || 0)}</span>
                 </div>
                 <div className="flex justify-between py-2 px-2.5 rounded-lg bg-slate-100 font-bold border border-slate-200">
-                  <span className="text-slate-800">Sisa Tagihan (Balance Due):</span>
+                  <span className="text-slate-800">Sisa Pembayaran (Balance Due):</span>
                   <span className={balanceDue > 0 ? 'text-[#DC2626] font-black text-sm' : 'text-[#166534] font-black text-sm'}>
                     {formatCurrency(balanceDue)}
                   </span>

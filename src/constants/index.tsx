@@ -1,7 +1,4 @@
 
-
-
-import React from 'react';
 import { ViewType, TransactionType, PaymentStatus, PocketType, ClientStatus, LeadStatus, ContactChannel, CardType, PerformanceNoteType, SatisfactionLevel, Notification, SocialMediaPost, PostType, PostStatus, PromoCode, ClientType, ProjectStatusConfig, VendorData, BookingStatus, ChatTemplate } from '../types';
 import type { User } from '../types';
 
@@ -390,7 +387,7 @@ export const DEFAULT_PROJECT_STATUS_SUGGESTIONS: {
         {
             name: 'Serah Terima Keuangan/Aset',
             color: '#ec4899', // pink-500
-            description: 'Tahap membereskan sisa tagihan atau serah terima aset khusus.',
+            description: 'Tahap menyelesaikan sisa pembayaran atau serah terima aset khusus.',
             defaultProgress: 90,
             subStatuses: [
                 { name: 'Rekap Sisa Pembayaran / Refund', note: 'Mengurus administrasi keuangan sisa' },
@@ -470,7 +467,7 @@ export const CHAT_TEMPLATES: ChatTemplate[] = [
     {
         id: 'progress_update',
         title: 'Update Progres Pengerjaan',
-        template: 'Halo {clientName},\n\nKami ingin memberikan update progress Acara Pernikahan Anda:\n\nAcara Pernikahan: {projectName}\nTotal Biaya: {totalCost}\nTerbayar: {amountPaid}\nSisa Tagihan: {sisaTagihan}\n\nAnda dapat memantau progres detailnya melalui portal pengantin di sini:\n{portalLink}\n\nTerima kasih!'
+        template: 'Halo {clientName},\n\nKami ingin memberikan update progress Acara Pernikahan Anda:\n\nAcara Pernikahan: {projectName}\nTotal Biaya: {totalCost}\nTerbayar: {amountPaid}\nSisa Pembayaran: {sisaTagihan}\n\nAnda dapat memantau progres detailnya melalui portal pengantin di sini:\n{portalLink}\n\nTerima kasih!'
     },
     {
         id: 'schedule_confirmation',
@@ -480,12 +477,12 @@ export const CHAT_TEMPLATES: ChatTemplate[] = [
     {
         id: 'payment_reminder',
         title: 'Pengingat Pelunasan',
-        template: 'Yth. {clientName},\n\nIni pengingat ramah untuk pembayaran pelunasan Acara Pernikahan "{projectName}" yang akan segera jatuh tempo.\n\nSisa Tagihan: {sisaTagihan}\n\nMohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih.'
+        template: 'Yth. {clientName},\n\nIni pengingat ramah untuk pembayaran pelunasan Acara Pernikahan "{projectName}" yang akan segera jatuh tempo.\n\nSisa Pembayaran: {sisaTagihan}\n\nMohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih.'
     },
     {
         id: 'detailed_bill',
-        title: 'Rekap Tagihan Detil',
-        template: 'Halo {clientName},\n\nSemoga sehat selalu. Kami ingin mengingatkan perihal sisa pembayaran untuk Acara Pernikahan Anda.\n\nBerikut rinciannya:\n- Acara Pernikahan: *{projectName}*\n- Paket: *{packageName}*\n\nSudah Terbayar: *{amountPaid}*\nSisa Tagihan: *{sisaTagihan}*\n\nTotal Sisa Tagihan: *{sisaTagihan}*\n\nAnda dapat melihat rincian invoice dan riwayat pembayaran melalui Portal Pengantin Anda di sini:\n{portalLink}\n\nMohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih!\n\nSalam,\nTim {companyName}'
+        title: 'Rekap Pembayaran',
+        template: 'Halo {clientName},\n\nSemoga sehat selalu. Kami ingin mengingatkan perihal sisa pembayaran untuk Acara Pernikahan Anda.\n\nBerikut rinciannya:\n- Acara Pernikahan: *{projectName}*\n- Paket: *{packageName}*\n\nSudah Terbayar: *{amountPaid}*\nSisa Pembayaran: *{sisaTagihan}*\n\nTotal Sisa Pembayaran: *{sisaTagihan}*\n\nAnda dapat melihat rincian invoice dan riwayat pembayaran melalui Portal Pengantin Anda di sini:\n{portalLink}\n\nMohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih!\n\nSalam,\nTim {companyName}'
     },
     {
         id: 'survey_reminder',
@@ -504,16 +501,16 @@ export const DEFAULT_BILLING_TEMPLATES: ChatTemplate[] = [
     {
         id: 'billing_new_invoice',
         title: 'Kirim Invoice Baru',
-        template: 'Halo {clientName},\n\nSalam dari {companyName}!\n\nKami mengirimkan invoice untuk Acara Pernikahan Anda.\n\nBerikut rinciannya:\n{projectDetails}\n\nTotal Tagihan: *{totalDue}*\n\nSilakan cek detail invoice dan melakukan pembayaran melalui Portal Pengantin Anda di sini:\n{portalLink}\n\nPembayaran dapat dilakukan ke rekening berikut:\n{bankAccount}\n\nTerima kasih atas kepercayaan Anda!'
+        template: 'Halo {clientName},\n\nSalam dari {companyName}!\n\nKami mengirimkan invoice untuk Acara Pernikahan Anda.\n\nBerikut rinciannya:\n{projectDetails}\n\nTotal Pembayaran: *{totalDue}*\n\nSilakan cek detail invoice dan melakukan pembayaran melalui Portal Pengantin Anda di sini:\n{portalLink}\n\nPembayaran dapat dilakukan ke rekening berikut:\n{bankAccount}\n\nTerima kasih atas kepercayaan Anda!'
     },
     {
         id: 'billing_friendly_reminder',
-        title: 'Pengingat Tagihan Ramah',
-        template: 'Halo {clientName},\n\nSemoga sehat selalu. Kami ingin mengingatkan perihal sisa pembayaran untuk Acara Pernikahan Anda.\n\nBerikut rinciannya:\n{projectDetails}\n\nTotal Sisa Tagihan: *{totalDue}*\n\nAnda dapat melihat rincian invoice dan riwayat pembayaran melalui Portal Pengantin Anda di sini:\n{portalLink}\n\nPembayaran dapat dilakukan ke rekening berikut:\n{bankAccount}\n\nMohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih!\n\nSalam,\nTim {companyName}'
+        title: 'Pengingat Pembayaran Ramah',
+        template: 'Halo {clientName},\n\nSemoga sehat selalu. Kami ingin mengingatkan perihal sisa pembayaran untuk Acara Pernikahan Anda.\n\nBerikut rinciannya:\n{projectDetails}\n\nTotal Sisa Pembayaran: *{totalDue}*\n\nAnda dapat melihat rincian invoice dan riwayat pembayaran melalui Portal Pengantin Anda di sini:\n{portalLink}\n\nPembayaran dapat dilakukan ke rekening berikut:\n{bankAccount}\n\nMohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih!\n\nSalam,\nTim {companyName}'
     },
     {
         id: 'billing_due_date_reminder',
         title: 'Pengingat Jatuh Tempo',
-        template: 'Yth. Bapak/Ibu {clientName},\n\nMenurut catatan kami, sisa pembayaran Acara Pernikahan Anda akan jatuh tempo. Berikut adalah rincian tagihan Anda:\n\n{projectDetails}\n\nTotal Sisa Tagihan: *{totalDue}*\n\nUntuk melihat detail invoice, silakan akses Portal Pengantin Anda di tautan berikut:\n{portalLink}\n\nKami mohon kesediaan Anda untuk menyelesaikan pembayaran sebelum tanggal jatuh tempo. Pembayaran dapat ditransfer ke:\n{bankAccount}\n\nTerima kasih atas kerja samanya.\n\nHormat kami,\nTim {companyName}'
+        template: 'Yth. Bapak/Ibu {clientName},\n\nMenurut catatan kami, sisa pembayaran Acara Pernikahan Anda akan jatuh tempo. Berikut adalah rincian pembayaran Anda:\n\n{projectDetails}\n\nTotal Sisa Pembayaran: *{totalDue}*\n\nUntuk melihat detail invoice, silakan akses Portal Pengantin Anda di tautan berikut:\n{portalLink}\n\nKami mohon kesediaan Anda untuk menyelesaikan pembayaran sebelum tanggal jatuh tempo. Pembayaran dapat ditransfer ke:\n{bankAccount}\n\nTerima kasih atas kerja samanya.\n\nHormat kami,\nTim {companyName}'
     }
 ];

@@ -31,7 +31,7 @@ const KIND_TABS: { value: FilterKind; label: string }[] = [
   { value: 'semua', label: 'Semua' },
   { value: 'invoice', label: 'Invoice' },
   { value: 'receipt', label: 'Tanda Terima' },
-  { value: 'slip-gaji', label: 'Slip Gaji' },
+  { value: 'slip-gaji', label: 'Pembayaran tim' },
 ];
 
 const STATUS_OPTIONS = [

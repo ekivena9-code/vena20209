@@ -5,8 +5,6 @@ import { getTransaction } from '../../../services/transactions';
 import { getProjectWithRelations } from '../../../services/projects';
 import { getProfile } from '../../../services/profile';
 import { getClient } from '../../../services/clients';
-import PDFViewer from '../../../shared/ui/PDFViewer';
-import { generatePDFBlob } from '../../../shared/utils/pdfUtils';
 
 interface PublicReceiptProps {
     transactionId: string;
@@ -19,9 +17,6 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
         if (!transactionId) {
@@ -78,28 +73,6 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
         fetchData();
         return () => { cancelled = true; };
     }, [transactionId]);
-
-    useEffect(() => {
-        if (transaction && profile && !loading) {
-            const timer = setTimeout(() => {
-                handleGeneratePreview();
-            }, 800);
-            return () => clearTimeout(timer);
-        }
-    }, [transaction, profile, loading]);
-
-    const handleGeneratePreview = async () => {
-        if (!transaction) return;
-        setIsGenerating(true);
-        try {
-            const blob = await generatePDFBlob('receipt-document', `receipt-${transaction.id.slice(-8)}.pdf`);
-            setPdfBlob(blob);
-        } catch (err) {
-            console.error('[PublicReceipt] Error generating preview:', err);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
 
     const handleDownloadPDF = async () => {
         const element = document.getElementById('receipt-document');
@@ -221,10 +194,9 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
                     </button>
                 </div>
 
-                {/* Hidden Document for PDF Generation */}
-                <div style={{ position: 'fixed', left: 0, top: 0, zIndex: -9999, opacity: 0, pointerEvents: 'none', width: '800px' }}>
-                    <div id="receipt-document" className="bg-white p-12 w-[800px] font-sans text-slate-900">
-                        <div className="flex justify-between items-start mb-12 pb-8 border-b-2 border-brand-accent">
+                <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <div id="receipt-document" className="mx-auto w-full max-w-[900px] bg-white p-4 font-sans text-slate-900 sm:p-8 print:p-0">
+                        <div className="mb-6 flex flex-col items-start justify-between gap-5 border-b-2 border-brand-accent pb-6 sm:mb-10 sm:flex-row sm:items-start sm:pb-8">
                             <div>
                                 {profile.logoBase64 ? (
                                     <img src={profile.logoBase64} alt="Company Logo" className="h-20 object-contain mb-4" />
@@ -237,28 +209,28 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
                                     <p>{profile.phone} • {profile.email}</p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <h1 className="text-4xl font-black text-slate-200 uppercase tracking-tighter leading-none mb-4">{documentTitle}</h1>
+                            <div className="w-full text-left sm:w-auto sm:text-right">
+                                <h1 className="mb-3 text-3xl font-black uppercase leading-none tracking-tighter text-slate-200 sm:mb-4">{documentTitle}</h1>
                                 <div className="inline-block bg-slate-100 px-3 py-1 rounded text-[10px] font-mono text-slate-500 uppercase">
                                     REF: #{transaction.id.slice(0, 8).toUpperCase()}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 p-8 rounded-2xl mb-12 border border-slate-100">
-                            <div className="flex justify-between items-center gap-6">
+                        <div className="mb-6 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:mb-10 sm:rounded-2xl sm:p-8">
+                            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-6">
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Status Konfirmasi</p>
                                     <p className={`text-sm font-black ${statusColor} uppercase`}>{statusText}</p>
                                 </div>
-                                <div className="text-right">
+                                <div className="w-full text-left sm:w-auto sm:text-right">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Jumlah Pembayaran</p>
-                                    <p className="text-5xl font-black text-slate-900 tracking-tighter leading-none">{formatCurrency(transaction.amount)}</p>
+                                    <p className="whitespace-nowrap text-2xl font-black leading-tight tracking-tighter text-slate-900 sm:text-3xl">{formatCurrency(transaction.amount)}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-12 mb-12">
+                        <div className="mb-6 grid grid-cols-1 gap-6 sm:mb-10 sm:grid-cols-2 sm:gap-8">
                             <div className="space-y-6">
                                 <div>
                                     <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-1">Pihak Terkait</h4>
@@ -296,11 +268,11 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
                                             <p className="text-xs font-bold text-brand-accent mb-2">{project.projectName}</p>
                                             <div className="grid grid-cols-2 gap-4 text-[11px]">
                                                 <div>
-                                                    <p className="text-slate-400 uppercase tracking-tighter mb-0.5">Total Tagihan</p>
+                                                    <p className="text-slate-400 uppercase tracking-tighter mb-0.5">Total Pembayaran</p>
                                                     <p className="font-bold text-slate-700">{formatCurrency(project.totalCost)}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-slate-400 uppercase tracking-tighter mb-0.5">Sisa Tagihan</p>
+                                                    <p className="text-slate-400 uppercase tracking-tighter mb-0.5">Sisa Pembayaran</p>
                                                     <p className="font-bold text-brand-accent">{formatCurrency(project.totalCost - project.amountPaid)}</p>
                                                 </div>
                                             </div>
@@ -310,11 +282,11 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-end pt-12 border-t border-slate-100">
-                            <div className="text-[9px] text-slate-400 uppercase tracking-widest font-black max-w-[200px]">
+                        <div className="flex flex-col items-start justify-between gap-8 border-t border-slate-100 pt-6 sm:flex-row sm:items-end sm:pt-10">
+                            <div className="max-w-[240px] text-[9px] font-black uppercase tracking-widest text-slate-400">
                                 Dokumen ini diterbitkan secara resmi melalui sistem manajemen {profile.companyName}
                             </div>
-                            <div className="text-center w-56 shrink-0">
+                            <div className="w-full shrink-0 text-center sm:w-56">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 font-mono">Tanda Tangan Authorized</p>
                                 <div className="h-20 flex items-center justify-center mb-4">
                                     {transaction.vendorSignature ? (
@@ -329,25 +301,6 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* PDF Viewer Canvas */}
-                <div className="bg-brand-surface rounded-none sm:rounded-3xl shadow-none sm:shadow-xl overflow-hidden min-h-[500px]">
-                    {isGenerating && !pdfBlob ? (
-                        <div className="flex flex-col items-center justify-center py-32">
-                            <div className="animate-spin border-4 border-brand-accent/20 border-t-brand-accent rounded-full w-12 h-12 mb-4"></div>
-                            <p className="text-sm font-medium text-brand-text-secondary italic">Menyiapkan pratinjau PDF...</p>
-                        </div>
-                    ) : (
-                        pdfBlob && <PDFViewer pdfBlob={pdfBlob} className="bg-white p-0 rounded-none shadow-none" />
-                    )}
-
-                    {!pdfBlob && !isGenerating && (
-                        <div className="flex flex-col items-center justify-center py-32 text-brand-text-secondary">
-                            <div className="animate-pulse w-48 h-64 bg-slate-800/10 rounded-xl mb-4"></div>
-                            <p className="text-sm font-medium animate-pulse">Memuat pratinjau...</p>
-                        </div>
-                    )}
                 </div>
 
                 <div className="mt-8 text-center no-print">

@@ -84,7 +84,7 @@ const CashflowTab: React.FC<CashflowTabProps> = ({
                             Grafik Arus Kas & Proyeksi Berbasis Data
                         </h4>
                         <p className="text-xs text-[#5A6A85] mt-0.5">
-                            Berdasarkan transaksi tercatat dan sisa tagihan pada acara yang akan datang.
+                            Berdasarkan transaksi tercatat dan sisa pembayaran pada acara yang akan datang.
                         </p>
                     </div>
                 </div>
@@ -150,7 +150,7 @@ const CashflowTab: React.FC<CashflowTabProps> = ({
                                             {d.label}
                                             {d.isProjected && Boolean(d.projectedReceivables) && (
                                                 <span className="block text-[10px] font-normal text-[#5D87FF]">
-                                                    (Sisa tagihan acara: {formatCurrency(d.projectedReceivables || 0)})
+                                                    (Sisa pembayaran acara: {formatCurrency(d.projectedReceivables || 0)})
                                                 </span>
                                             )}
                                         </td>

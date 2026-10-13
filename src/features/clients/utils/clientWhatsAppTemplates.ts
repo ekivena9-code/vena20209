@@ -12,11 +12,11 @@ export const generateInvoiceWhatsAppMessage = (
     return (
         `Halo *${firstName}*! 👋\n\n` +
         `Berikut kami kirimkan *Invoice* untuk Acara Pernikahan Anda bersama *${companyName}* 💍\n\n` +
-        `📋 *Detail Tagihan:*\n` +
+        `📋 *Rincian Pembayaran:*\n` +
         `• Acara: ${project.projectName}\n` +
         `• Total Biaya: *${formatCurrency(project.totalCost)}*\n` +
         `• Sudah Dibayar: ${formatCurrency(project.amountPaid)}\n` +
-        `• Sisa Tagihan: *${formatCurrency(sisa)}*\n\n` +
+        `• Sisa Pembayaran: *${formatCurrency(sisa)}*\n\n` +
         `📄 *Lihat & Download Invoice PDF di sini:*\n${publicInvoiceUrl}\n\n` +
         `_(File PDF invoice juga telah kami kirimkan terpisah)_\n\n` +
         `Terima kasih atas kepercayaan Anda. Semoga acaranya berjalan lancar! 🙏`

@@ -42,7 +42,7 @@ export const BillingChatModal: React.FC<BillingChatModalProps> = ({
         const totalDue = projectsWithBalance.reduce((sum, p) => sum + (p.totalCost - p.amountPaid), 0);
 
         const projectDetails = projectsWithBalance.map(p =>
-            `- Acara Pernikahan: *${p.projectName}*\n  Sisa Tagihan: ${formatCurrency(p.totalCost - p.amountPaid)}`
+            `- Acara Pernikahan: *${p.projectName}*\n  Sisa Pembayaran: ${formatCurrency(p.totalCost - p.amountPaid)}`
         ).join('\n');
 
         const path = window.location.pathname.replace(/index\.html$/, '');
@@ -90,7 +90,7 @@ export const BillingChatModal: React.FC<BillingChatModalProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
             <div className="bg-brand-surface border border-brand-border rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in">
                 <div className="p-4 md:p-6 border-b border-brand-border flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-brand-text-light">Kirim Tagihan ke {client.name}</h3>
+                    <h3 className="text-lg font-bold text-brand-text-light">Kirim Pengingat Pembayaran ke {client.name}</h3>
                     <button onClick={onClose} className="text-brand-text-secondary hover:text-brand-text-light">✕</button>
                 </div>
                 <div className="p-4 md:p-6 space-y-4">

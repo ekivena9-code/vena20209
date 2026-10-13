@@ -55,7 +55,7 @@ const KindBadge: React.FC<{ kind: 'invoice' | 'receipt' | 'slip-gaji' }> = ({ ki
         : 'bg-[#13DEB9]/10 text-[#13DEB9] border-[#13DEB9]/20'
     }`}
   >
-    {kind === 'invoice' ? 'Invoice' : kind === 'receipt' ? 'Tanda Terima' : 'Slip Gaji'}
+    {kind === 'invoice' ? 'Invoice' : kind === 'receipt' ? 'Tanda Terima' : 'Pembayaran tim'}
   </span>
 );
 
@@ -302,7 +302,7 @@ const InvoiceListTable: React.FC<InvoiceListTableProps> = ({
                             ? 'Edit invoice & rincian' 
                             : doc.kind === 'receipt' 
                             ? 'Edit tanda terima / transaksi'
-                            : 'Aksi Slip Gaji tidak tersedia'
+                            : 'Aksi Pembayaran tim tidak tersedia'
                         }
                       >
                         <EditIcon />

@@ -230,15 +230,15 @@ const VARIABLE_CHIPS = [
     { label: '{packageName}', desc: 'Nama paket' },
     { label: '{amountPaid}', desc: 'Sudah dibayar' },
     { label: '{totalCost}', desc: 'Total biaya' },
-    { label: '{sisaTagihan}', desc: 'Sisa tagihan' },
+    { label: '{sisaTagihan}', desc: 'Sisa pembayaran' },
     { label: '{portalLink}', desc: 'Link portal pengantin' },
     { label: '{companyName}', desc: 'Nama perusahaan' },
 ];
 
 const BILLING_VARIABLE_CHIPS = [
     { label: '{clientName}', desc: 'Nama pengantin' },
-    { label: '{projectDetails}', desc: 'Rincian acara & sisa tagihan per acara' },
-    { label: '{totalDue}', desc: 'Total sisa tagihan' },
+    { label: '{projectDetails}', desc: 'Rincian acara & sisa pembayaran per acara' },
+    { label: '{totalDue}', desc: 'Total sisa pembayaran' },
     { label: '{portalLink}', desc: 'Link portal pengantin' },
     { label: '{bankAccount}', desc: 'No. rekening bank' },
     { label: '{companyName}', desc: 'Nama perusahaan' },
@@ -253,7 +253,7 @@ const PREVIEW_VARS: Record<string, string> = {
     sisaTagihan: 'Rp 5.000.000',
     portalLink: 'https://example.com/portal/abc123',
     // Billing preview vars
-    projectDetails: '- Acara Pernikahan: *Wedding Budi & Ani*\n  Sisa Tagihan: Rp 5.000.000',
+    projectDetails: '- Acara Pernikahan: *Wedding Budi & Ani*\n  Sisa Pembayaran: Rp 5.000.000',
     totalDue: 'Rp 5.000.000',
     bankAccount: 'BCA 1234567890 a.n. Wedding Studio',
     companyName: 'Wedding Studio',
@@ -314,7 +314,7 @@ const SHARE_TEMPLATE_CONFIGS = [
             { label: '{projectName}', desc: 'Nama acara' },
             { label: '{totalCost}', desc: 'Total biaya' },
             { label: '{amountPaid}', desc: 'Sudah dibayar' },
-            { label: '{sisaTagihan}', desc: 'Sisa tagihan' },
+            { label: '{sisaTagihan}', desc: 'Sisa pembayaran' },
             { label: '{invoiceLink}', desc: 'Link invoice PDF' },
         ],
     },
@@ -818,7 +818,7 @@ const ChatTemplateSettings: React.FC<{
             const updatedProfile = await upsertProfile({ ...profile, billingTemplates: updated } as any);
             setProfile(updatedProfile);
             setBillingTemplates(updated);
-            showSuccess('Template tagihan berhasil disimpan!');
+            showSuccess('Template pembayaran berhasil disimpan!');
         } catch (err: any) {
             alert('Gagal menyimpan: ' + (err?.message || 'Coba lagi.'));
         } finally {
@@ -935,8 +935,8 @@ const ChatTemplateSettings: React.FC<{
             {/* ─── BILLING TEMPLATES TAB ──────────────────────── */}
             {innerTab === 'billing' && (
                 <TemplateCrudSection
-                    title="Template Tagihan & Invoice WA"
-                    subtitle="Digunakan di tombol 'Kirim Tagihan via WA' pada halaman Manajemen Pengantin."
+                    title="Template Pembayaran & Invoice WA"
+                    subtitle="Digunakan di tombol 'Kirim Pengingat Pembayaran via WA' pada halaman Manajemen Pengantin."
                     icon={<Monitor className="w-5 h-5" />}
                     accentClass="bg-orange-400/20 text-orange-800"
                     chipClass="bg-orange-400/10 text-orange-800 border-orange-600/20"
@@ -2049,7 +2049,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                     </div>
                                 </div>
                                 <div>
-                                    <label htmlFor="signatureUpload" className="text-xs md:text-sm font-medium text-brand-text-secondary">Tanda Tangan (TTD) - untuk Invoice, Kontrak, Slip Gaji</label>
+                                    <label htmlFor="signatureUpload" className="text-xs md:text-sm font-medium text-brand-text-secondary">Tanda Tangan (TTD) - untuk Invoice, Kontrak, Pembayaran tim</label>
                                     <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
                                         <div className="relative flex-shrink-0">
                                             {profile.signatureBase64 && profile.signatureBase64 !== '' ?
@@ -2076,7 +2076,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                                 className="block w-full text-xs md:text-sm text-brand-text-secondary file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-full file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-brand-accent/10 file:text-brand-accent hover:file:bg-brand-accent/20 cursor-pointer"
                                                 accept="image/png, image/jpeg, image/webp"
                                             />
-                                            <p className="text-[10px] md:text-xs text-brand-text-secondary">Upload gambar TTD Anda. TTD ini akan otomatis digunakan saat menandatangani invoice, kontrak, dan slip gaji.</p>
+                                            <p className="text-[10px] md:text-xs text-brand-text-secondary">Upload gambar TTD Anda. TTD ini akan otomatis digunakan saat menandatangani invoice, kontrak, dan pembayaran tim.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -2137,7 +2137,7 @@ const Settings: React.FC<SettingsProps> = ({ profile, setProfile, transactions, 
                                 </div>
                                 <div className="p-4 bg-brand-accent/5 rounded-xl border border-brand-accent/20">
                                     <div className="mb-2.5 p-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700 leading-relaxed">
-                                        <span className="font-bold">Khusus Dokumen Invoice:</span> Syarat & ketentuan di bawah ini dicetak khusus pada lembar dokumen Invoice tagihan klien. Untuk syarat & ketentuan katalog pemesanan paket, dikelola di halaman <strong>Input Package → Syarat</strong>.
+                                        <span className="font-bold">Khusus Dokumen Invoice:</span> Syarat & ketentuan di bawah ini dicetak khusus pada lembar dokumen Invoice klien. Untuk syarat & ketentuan katalog pemesanan paket, dikelola di halaman <strong>Input Package → Syarat</strong>.
                                     </div>
                                     <TemplateEditor
                                         id="termsAndConditions"

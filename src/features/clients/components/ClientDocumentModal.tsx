@@ -119,7 +119,7 @@ export const ClientDocumentModal: React.FC<ClientDocumentModalProps> = ({
             <Modal
                 isOpen={!!documentToView}
                 onClose={onClose}
-                title={documentToView ? (documentToView.type === 'invoice' ? 'Invoice' : documentToView.type === 'receipt' ? 'Tanda Terima' : 'Slip Gaji') : ''}
+                title={documentToView ? (documentToView.type === 'invoice' ? 'Invoice' : documentToView.type === 'receipt' ? 'Tanda Terima' : 'Pembayaran tim') : ''}
                 size="4xl"
             >
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">

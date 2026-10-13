@@ -179,7 +179,7 @@ export function useInvoiceFormModal({
       grandTotal: 0,
       amountPaid: 0,
       paymentStatus: PaymentStatus.BELUM_BAYAR,
-      notes: 'Pembayaran DP minimal 30% dari total tagihan. Pelunasan paling lambat H-3 sebelum tanggal acara.',
+      notes: 'Pembayaran DP minimal 30% dari total biaya. Pelunasan paling lambat H-3 sebelum tanggal acara.',
     };
   }
 

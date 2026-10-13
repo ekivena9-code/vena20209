@@ -2299,7 +2299,7 @@ td {
   .text-\[9px\], .text-\[8px\]   { font-size: 0.48rem !important; line-height: 1.15 !important; }
 
   /* 1. BUTTONS, ICON BUTTONS, TABS & FILTERS */
-  button:not(.checklist-item-toggle):not(.client-payment-toggle):not(.finance-add-pocket-card):not(.finance-add-account-card):not(.vendor-portfolio-card):not(.btn-box-read):not(.btn-box-edit):not(.btn-box-delete):not(.btn-box-wa):not(.btn-box-add):not(.rounded-full):not([class*="rounded-full"]):not(.bottom-nav button):not([class*="w-7"]):not([class*="w-8"]):not([class*="h-7"]):not([class*="h-8"]):not([class*="w-6"]):not([class*="h-6"]):not(.package-booking-button),
+  button:not(.workflow-trigger):not(.checklist-item-toggle):not(.client-payment-toggle):not(.finance-add-pocket-card):not(.finance-add-account-card):not(.vendor-portfolio-card):not(.btn-box-read):not(.btn-box-edit):not(.btn-box-delete):not(.btn-box-wa):not(.btn-box-add):not(.rounded-full):not([class*="rounded-full"]):not(.bottom-nav button):not([class*="w-7"]):not([class*="w-8"]):not([class*="h-7"]):not([class*="h-8"]):not([class*="w-6"]):not([class*="h-6"]):not(.package-booking-button),
   .button-primary:not(.package-booking-button),
   .button-secondary,
   .button-danger,

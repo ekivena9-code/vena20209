@@ -542,7 +542,7 @@ const DashboardTab: React.FC<{
         {[
           { label: 'Total Package', value: formatDisplayCurrency(financial.totalValue) },
           { label: 'Terbayar', value: formatDisplayCurrency(financial.totalPaid) },
-          { label: 'Sisa Tagihan', value: formatDisplayCurrency(financial.totalDue) },
+          { label: 'Sisa Pembayaran', value: formatDisplayCurrency(financial.totalDue) },
         ].map(item => (
           <div key={item.label} className="portal-card rounded-2xl p-4 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">{item.label}</p>

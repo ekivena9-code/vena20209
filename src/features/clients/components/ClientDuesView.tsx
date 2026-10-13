@@ -40,13 +40,13 @@ export const ClientDuesView: React.FC<ClientDuesViewProps> = ({
                                 className="flex items-center gap-1.5 bg-green-600 hover:bg-green-600 text-white !text-xs !px-3 !py-2 rounded-lg transition-colors"
                             >
                                 <WhatsappIcon className="w-4 h-4" />
-                                Tagih
+                                Ingatkan Pembayaran
                             </button>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
                             <span className="text-brand-text-secondary">Total Nilai</span>
                             <span className="text-right">{formatCurrency(client.totalProjectValue)}</span>
-                            <span className="text-brand-text-secondary">Sisa Tagihan</span>
+                            <span className="text-brand-text-secondary">Sisa Pembayaran</span>
                             <span className="text-right font-bold text-brand-danger">{formatCurrency(client.balanceDue)}</span>
                             <span className="text-brand-text-secondary">Acara Pernikahan Terbaru</span>
                             <span className="text-right">{client.mostRecentProject?.projectName || '-'}</span>
@@ -74,7 +74,7 @@ export const ClientDuesView: React.FC<ClientDuesViewProps> = ({
                             <th className="px-4 py-4 font-medium tracking-wider text-center w-12">No</th>
                             <th className="px-6 py-4 font-medium tracking-wider">Pengantin</th>
                             <th className="px-6 py-4 font-medium tracking-wider text-right">Total Package</th>
-                            <th className="px-6 py-4 font-medium tracking-wider text-right">Sisa Tagihan</th>
+                            <th className="px-6 py-4 font-medium tracking-wider text-right">Sisa Pembayaran</th>
                             <th className="px-6 py-4 font-medium tracking-wider">Acara Pernikahan Terbaru</th>
                             <th className="px-6 py-4 font-medium tracking-wider text-center">Aksi</th>
                         </tr>
@@ -94,10 +94,10 @@ export const ClientDuesView: React.FC<ClientDuesViewProps> = ({
                                     <button
                                         onClick={() => onBillingClick(client)}
                                         className="btn-box-wa px-3 py-1.5 text-xs"
-                                        title="Tagih via WhatsApp"
+                                        title="Ingatkan Pembayaran via WhatsApp"
                                     >
                                         <WhatsappIcon className="w-4 h-4 flex-shrink-0 text-white" />
-                                        <span>Tagih WA</span>
+                                        <span>Ingatkan Pembayaran</span>
                                     </button>
                                 </td>
                             </tr>

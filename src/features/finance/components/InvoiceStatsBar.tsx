@@ -63,7 +63,7 @@ const InvoiceStatsBar: React.FC<InvoiceStatsBarProps> = ({ stats }) => {
         icon={<CheckCircle2 className="w-5 h-5 text-green-400" />}
       />
       <StatCard
-        label="Sisa Tagihan"
+        label="Sisa Pembayaran"
         value={formatCurrency(stats.totalUnpaid)}
         sub={`${stats.pending} invoice belum lunas`}
         accent="text-[#DC2626]"

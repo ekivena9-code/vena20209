@@ -282,7 +282,7 @@ const InvoicePage: React.FC<InvoicePageProps> = ({
     } else if (currentDoc.type === 'receipt') {
       handleNavigation(ViewType.FINANCE, { type: 'openTransaction', id: currentDoc.transaction.id });
     } else if (currentDoc.type === 'slip-gaji') {
-      showNotification('Slip gaji tidak dapat diedit dari sini.');
+      showNotification('Pembayaran tim tidak dapat diedit dari sini.');
     }
   };
 
@@ -348,7 +348,7 @@ const InvoicePage: React.FC<InvoicePageProps> = ({
               } else if (doc.kind === 'receipt' && doc.transaction) {
                 handleNavigation(ViewType.FINANCE, { type: 'openTransaction', id: doc.transaction.id });
               } else if (doc.kind === 'slip-gaji') {
-                showNotification('Slip gaji tidak dapat diedit dari sini.');
+                showNotification('Pembayaran tim tidak dapat diedit dari sini.');
               }
             }}
             onDelete={setDeleteConfirm}

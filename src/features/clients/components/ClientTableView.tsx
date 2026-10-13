@@ -142,7 +142,7 @@ export const ClientTableView: React.FC<ClientTableViewProps> = ({
                                 <span className="font-bold text-[11px] text-[#2A3547] tabular-nums">{formatCurrency(client.totalProjectValue)}</span>
                             </div>
                             <div className="text-right">
-                                <span className="text-[#5A6A85] text-[10px] block">Sisa Tagihan</span>
+                                <span className="text-[#5A6A85] text-[10px] block">Sisa Pembayaran</span>
                                 <span className="font-bold text-[11px] text-[#FA896B] tabular-nums">{formatCurrency(client.balanceDue)}</span>
                             </div>
                         </div>
@@ -208,7 +208,7 @@ export const ClientTableView: React.FC<ClientTableViewProps> = ({
                             <th className="px-3 lg:px-6 py-3.5">Pengantin</th>
                             <th className="px-3 lg:px-6 py-3.5">Status</th>
                             <th className="px-3 lg:px-6 py-3.5">Total Package</th>
-                            <th className="px-3 lg:px-6 py-3.5">Sisa Tagihan</th>
+                            <th className="px-3 lg:px-6 py-3.5">Sisa Pembayaran</th>
                             <th className="px-3 lg:px-6 py-3.5">Acara Pernikahan Terbaru</th>
                             <th className="px-3 lg:px-6 py-3.5 text-center">Aksi</th>
                         </tr>

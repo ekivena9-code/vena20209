@@ -315,7 +315,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                     'Booking paket dinyatakan sah setelah pembayaran Down Payment (DP) minimal 30%.',
                     'Tanggal acara hanya akan di-lock setelah bukti transfer DP diverifikasi.',
                     'Pelunasan total biaya paket dilakukan selambat-lambatnya H-7 sebelum hari pelaksanaan acara.',
-                    'Pembayaran hanya sah melalui rekening resmi vendor yang tertera di dokumen tagihan.'
+                    'Pembayaran hanya sah melalui rekening resmi vendor yang tertera di dokumen invoice.'
                 ]
             },
             {
@@ -699,6 +699,86 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                 }
 
                 @media (max-width: 768px) {
+                    #package-booking-form {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        padding: 0 !important;
+                    }
+                    #package-booking-form > .grid {
+                        width: 100% !important;
+                        gap: 1.5rem !important;
+                    }
+                    #package-booking-form .booking-form-section {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        padding: 0 !important;
+                        background: transparent !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                    }
+                    #package-booking-form input.input-field:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+                    #package-booking-form select.input-field {
+                        box-sizing: border-box;
+                        min-height: 44px !important;
+                        height: 44px !important;
+                        padding: 0.65rem 0.75rem !important;
+                        font-size: 16px !important;
+                        line-height: 1.25 !important;
+                    }
+                    #package-booking-form .input-group {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        gap: 6px !important;
+                    }
+                    #package-booking-form .input-label {
+                        position: static !important;
+                        order: -1;
+                        display: block !important;
+                        inset: auto !important;
+                        margin: 0 !important;
+                        font-size: 13px !important;
+                        line-height: 1.35 !important;
+                        transform: none !important;
+                        transition: none !important;
+                        color: var(--color-text-primary) !important;
+                    }
+                    #package-booking-form .input-field {
+                        border: 1px solid #111 !important;
+                        transition: none !important;
+                    }
+                    #package-booking-form .input-field:focus,
+                    #package-booking-form select.input-field:focus {
+                        border-color: #111 !important;
+                        box-shadow: none !important;
+                        transform: none !important;
+                    }
+                    #package-booking-form .input-field:focus-visible {
+                        outline: 2px solid var(--color-accent) !important;
+                        outline-offset: 1px !important;
+                    }
+                    .template-wrapper .workflow-title {
+                        font-size: 1rem !important;
+                        line-height: 1.35 !important;
+                    }
+                    .template-wrapper .workflow-subtitle,
+                    .template-wrapper .workflow-meta {
+                        font-size: 0.75rem !important;
+                        line-height: 1.35 !important;
+                    }
+                    .template-wrapper .workflow-label {
+                        font-size: 0.875rem !important;
+                        line-height: 1.35 !important;
+                    }
+                    .template-wrapper button.workflow-trigger {
+                        min-height: 40px !important;
+                        height: auto !important;
+                        max-height: none !important;
+                    }
+                    .template-wrapper .workflow-copy {
+                        font-size: 0.875rem !important;
+                        line-height: 1.5 !important;
+                    }
                     .template-wrapper .package-card-cover { height: 160px !important; }
                     .template-wrapper .package-card-title { font-size: 1.05rem !important; line-height: 1.35 !important; }
                     .template-wrapper .package-desc-text { font-size: 0.82rem !important; line-height: 1.5 !important; }
@@ -820,10 +900,10 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                         <ListOrdered className="w-4 h-4" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg md:text-xl font-bold text-gradient">
+                                        <h3 className="text-lg md:text-xl font-bold text-gradient workflow-title">
                                             Workflow & Timeline Layanan
                                         </h3>
-                                        <p className="text-xs text-brand-text-secondary">
+                                        <p className="text-xs text-brand-text-secondary workflow-subtitle">
                                             {activeWorkflows.length} Alur Kerja Tersedia
                                         </p>
                                     </div>
@@ -844,18 +924,18 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                             e.stopPropagation();
                                                             setOpenWorkflowId(isExpanded ? '' : wf.id);
                                                         }}
-                                                        className="w-full flex justify-between items-center text-left p-3 hover:bg-brand-bg/80 transition-colors"
+                                                        className="w-full flex justify-between items-center text-left p-3 hover:bg-brand-bg/80 transition-colors workflow-trigger"
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             <span className="w-5 h-5 rounded-md bg-brand-accent/20 text-brand-accent flex items-center justify-center text-xs font-bold">
                                                                 {wfIdx + 1}
                                                             </span>
-                                                            <h4 className="font-semibold text-brand-text-light text-sm">
+                                                            <h4 className="font-semibold text-brand-text-light text-sm workflow-label">
                                                                 {wf.title}
                                                             </h4>
                                                         </div>
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] bg-brand-surface text-brand-text-secondary px-2 py-0.5 rounded-full border border-brand-border">
+                                                            <span className="text-[10px] bg-brand-surface text-brand-text-secondary px-2 py-0.5 rounded-full border border-brand-border workflow-meta">
                                                                 {wf.timeline.length} Tahapan
                                                             </span>
                                                             <ChevronDownIcon className={`w-4 h-4 transition-transform text-brand-text-secondary ${isExpanded ? 'rotate-180' : ''}`} />
@@ -865,7 +945,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                         <div className="overflow-hidden">
                                                             <div className="p-3 pt-1 space-y-2 border-t border-brand-border/60">
                                                                 {wf.timeline.map((item, itemIdx) => (
-                                                                    <div key={itemIdx} className="flex items-start gap-2.5 text-xs sm:text-sm text-brand-text-secondary">
+                                                                    <div key={itemIdx} className="flex items-start gap-2.5 text-sm text-brand-text-secondary workflow-copy">
                                                                         <span className="w-4 h-4 rounded-full bg-brand-accent/15 text-brand-accent flex items-center justify-center text-[10px] font-bold mt-0.5 shrink-0">
                                                                             {itemIdx + 1}
                                                                         </span>
@@ -897,10 +977,10 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                         <ShieldCheck className="w-4 h-4" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg md:text-xl font-bold text-gradient">
+                                        <h3 className="text-lg md:text-xl font-bold text-gradient workflow-title">
                                             Syarat & Ketentuan Paket
                                         </h3>
-                                        <p className="text-xs text-brand-text-secondary">
+                                        <p className="text-xs text-brand-text-secondary workflow-subtitle">
                                             {activePackageTerms.length} Bagian Ketentuan Booking
                                         </p>
                                     </div>
@@ -914,13 +994,13 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                         {activePackageTerms && activePackageTerms.length > 0 ? (
                                             activePackageTerms.map((section, sIdx) => (
                                                 <div key={section.id || sIdx} className="border border-brand-border/80 bg-brand-bg/40 rounded-xl p-3.5 space-y-2.5">
-                                                    <h4 className="font-semibold text-brand-text-light text-sm flex items-center gap-2">
+                                                    <h4 className="font-semibold text-brand-text-light text-sm flex items-center gap-2 workflow-label">
                                                         <span className="w-5 h-5 rounded-md bg-brand-accent/20 text-brand-accent flex items-center justify-center text-xs font-bold">
                                                             {sIdx + 1}
                                                         </span>
                                                         <span>{section.title}</span>
                                                     </h4>
-                                                    <ul className="space-y-1.5 pl-7 text-xs sm:text-sm text-brand-text-secondary">
+                                                    <ul className="space-y-1.5 pl-7 text-sm text-brand-text-secondary workflow-copy">
                                                         {section.items.map((item, itemIdx) => (
                                                             <li key={itemIdx} className="flex items-start gap-2">
                                                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
@@ -1205,24 +1285,45 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
 
                 <Modal isOpen={bookingModal.isOpen} onClose={handleCloseBookingModal} title={`Booking: ${bookingModal.pkg?.name}`} size="5xl">
                     {isSubmitted ? (
-                        <div className="text-center p-8">
-                            <h3 className="text-2xl font-bold text-gradient">Terima Kasih!</h3>
-                            <p className="mt-4 text-public-text-primary">Formulir booking Anda telah kami terima. Tim kami akan segera menghubungi Anda untuk konfirmasi.</p>
-                            <a
-                                href={whatsappUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-6 button-primary w-full max-w-xs mx-auto"
-                            >
-                                Konfirmasi ke Admin via WhatsApp
-                            </a>
-                            <button onClick={handleCloseBookingModal} className="mt-4 button-secondary w-full max-w-xs mx-auto">Tutup</button>
+                        <div className="p-4 sm:p-8">
+                            <div className="mx-auto max-w-md rounded-[28px] border border-brand-border/80 bg-gradient-to-br from-brand-surface via-white to-brand-bg/70 p-5 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] sm:p-7">
+                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner shadow-emerald-200/80">
+                                    <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8" aria-hidden="true">
+                                        <path d="M5 12.5 9.2 16.7 19 6.8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </div>
+
+                                <div className="mt-5 text-center">
+                                    <h3 className="text-2xl font-black tracking-tight text-brand-text-light sm:text-3xl">Terima Kasih!</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-brand-text-secondary sm:text-base">
+                                        Formulir booking Anda telah kami terima. Tim kami akan segera menghubungi Anda untuk konfirmasi.
+                                    </p>
+                                </div>
+
+                                <div className="mt-7 space-y-3">
+                                    <a
+                                        href={whatsappUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="button-primary w-full justify-center"
+                                    >
+                                        Konfirmasi via WhatsApp
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseBookingModal}
+                                        className="button-secondary w-full justify-center"
+                                    >
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
-                    <form onSubmit={handleSubmit} className="space-y-8 p-2 sm:p-4 form-compact form-compact--ios-scale">
+                    <form id="package-booking-form" onSubmit={handleSubmit} className="space-y-8 p-2 sm:p-4 form-compact form-compact--ios-scale">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             {/* Column 1: Client Info & Main Package */}
-                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm">
+                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm booking-form-section">
                                 <div className="space-y-1">
                                     <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
@@ -1232,9 +1333,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                 </div>
                                 <div className="space-y-4">
                                     <div className="input-group"><input type="text" id="clientName" name="clientName" value={formData.clientName} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="clientName" className="input-label">Nama Pengantin</label></div>
-                                    <div className="input-group"><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="email" className="input-label">Email (Opsional)</label></div>
                                     <div className="input-group"><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="phone" className="input-label">Nomor WhatsApp</label></div>
-                                    <div className="input-group"><input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="instagram" className="input-label">Instagram (Opsional)</label></div>
                                     <div className="input-group">
                                         <input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " />
                                         <label htmlFor="date" className="input-label">Tanggal Acara Pernikahan (Opsional)</label>
@@ -1297,14 +1396,14 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                 {bookingModal.pkg.durationOptions.map(opt => {
                                                     const isSelected = formData.durationSelection === opt.label;
                                                     return (
-                                                        <label key={opt.label} className={`package-duration-card flex min-w-[150px] cursor-pointer flex-col justify-between gap-2 rounded-2xl border-2 p-3 transition-all shrink-0 ${isSelected ? 'border-brand-accent bg-brand-accent/5 shadow-sm' : 'border-brand-border bg-brand-surface hover:border-brand-accent/50'}`}>
-                                                            <span className="flex items-center justify-between gap-2 text-xs font-semibold text-brand-text-primary">
+                                                        <label key={opt.label} className={`package-duration-card flex min-w-[150px] cursor-pointer flex-col justify-between gap-2 rounded-2xl border-2 p-3 transition-all shrink-0 ${isSelected ? 'border-brand-accent bg-brand-accent text-white shadow-sm' : 'border-brand-border bg-brand-surface hover:border-brand-accent/50'}`}>
+                                                            <span className={`flex items-center justify-between gap-2 text-xs font-semibold ${isSelected ? 'text-white' : 'text-brand-text-primary'}`}>
                                                                 {opt.label}
-                                                                {opt.default && <span className="rounded-full bg-brand-accent/10 px-2 py-0.5 text-[9px] font-bold uppercase text-brand-accent">Default</span>}
+                                                                {opt.default && <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${isSelected ? 'bg-white/20 text-white' : 'bg-brand-accent/10 text-brand-accent'}`}>Default</span>}
                                                             </span>
-                                                            <span className="flex items-center justify-between gap-2 pt-2 border-t border-brand-border/60">
-                                                                <span className="package-duration-price-value text-[10px] font-medium text-brand-text-secondary">{formatCurrency(opt.price)}</span>
-                                                                <input type="radio" name="durationSelection" value={opt.label} checked={isSelected} onChange={handleFormChange} className="h-4 w-4 accent-brand-accent" />
+                                                            <span className={`flex items-center justify-between gap-2 pt-2 border-t ${isSelected ? 'border-white/40' : 'border-brand-border/60'}`}>
+                                                                <span className={`package-duration-price-value text-[10px] font-medium ${isSelected ? 'text-white' : 'text-brand-text-secondary'}`}>{formatCurrency(opt.price)}</span>
+                                                                <input type="radio" name="durationSelection" value={opt.label} checked={isSelected} onChange={handleFormChange} className={`h-4 w-4 ${isSelected ? 'accent-white' : 'accent-brand-accent'}`} />
                                                             </span>
                                                         </label>
                                                     );
@@ -1316,7 +1415,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             </div>
 
                             {/* Column 2: Optional Packages, Add-ons, Promo, Payment */}
-                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm">
+                            <div className="space-y-6 bg-brand-surface/60 p-6 rounded-3xl border border-brand-border/80 shadow-sm booking-form-section">
                                 <div className="space-y-1">
                                     <h4 className="text-base font-bold text-brand-text-light flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-brand-accent"></span>
@@ -1395,7 +1494,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                                                 {pkg.durationOptions!.map(opt => {
                                                                                     const isOptSelected = selectedOptional?.selectedDuration === opt.label;
                                                                                     return (
-                                                                                        <label key={opt.label} className={`package-duration-card flex min-w-[130px] cursor-pointer flex-col justify-between gap-1 rounded-xl border p-2 text-[10px] shrink-0 ${isOptSelected ? 'border-brand-accent bg-brand-accent/10 font-bold' : 'border-brand-border bg-brand-surface'}`}>
+                                                                                        <label key={opt.label} className={`package-duration-card flex min-w-[130px] cursor-pointer flex-col justify-between gap-1 rounded-xl border p-2 text-[10px] shrink-0 ${isOptSelected ? 'border-brand-accent bg-brand-accent text-white font-bold' : 'border-brand-border bg-brand-surface'}`}>
                                                                                             <span className="flex items-center justify-between">
                                                                                                 <span>{opt.label}</span>
                                                                                                 <input 
@@ -1409,10 +1508,10 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                                                                             : op
                                                                                                         ));
                                                                                                     }}
-                                                                                                    className="h-3 w-3 accent-brand-accent"
+                                                                                                    className={`h-3 w-3 ${isOptSelected ? 'accent-white' : 'accent-brand-accent'}`}
                                                                                                 />
                                                                                             </span>
-                                                                                            <span className="text-brand-accent font-bold">{formatCurrency(opt.price)}</span>
+                                                                                            <span className={`font-bold ${isOptSelected ? 'text-white' : 'text-brand-accent'}`}>{formatCurrency(opt.price)}</span>
                                                                                         </label>
                                                                                     );
                                                                                 })}

@@ -646,7 +646,7 @@
     white-space: nowrap !important;
   }
 
-  /* Baris terakhir (Sisa Tagihan) lebih menonjol */
+  /* Baris terakhir (Sisa Pembayaran) lebih menonjol */
   .print-invoice .invoice-totals .flex:last-child span:first-child {
     font-weight: 800 !important;
     color: #0f172a !important;

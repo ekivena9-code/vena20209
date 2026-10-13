@@ -554,8 +554,12 @@ export async function listProjectsByClientId(clientId: string): Promise<Project[
 
 // Enhanced function to get project with all related data
 export async function getProjectWithRelations(projectId: string): Promise<Project | null> {
-  let { data, error } = await supabase.from(PROJECTS).select('*').eq('id', projectId).maybeSingle();
-  if (error) throw error;
+  let data: any = null;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
+    const result = await supabase.from(PROJECTS).select('*').eq('id', projectId).maybeSingle();
+    if (result.error) throw result.error;
+    data = result.data;
+  }
 
   if (!data) {
     const patterns = publicNamePatternsFromSlug(projectId);

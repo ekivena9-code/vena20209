@@ -501,7 +501,7 @@ const InteractiveCashflowChart: React.FC<InteractiveCashflowChartProps> = React.
                                     Ringkasan Proyeksi Kas ({projectionMonths} Bulan ke Depan)
                                 </h5>
                                 <p className="text-[11px] text-[#5A6A85] font-medium">
-                                    Estimasi dari transaksi 6 bulan terakhir dan sisa tagihan acara
+                                    Estimasi dari transaksi 6 bulan terakhir dan sisa pembayaran acara
                                 </p>
                             </div>
                         </div>
@@ -539,7 +539,7 @@ const InteractiveCashflowChart: React.FC<InteractiveCashflowChartProps> = React.
                             </span>
                         </div>
                         <div className="bg-white p-3 rounded-xl border border-[#EAEFF4]">
-                            <span className="text-[10px] uppercase font-bold text-[#5A6A85] block">Sisa Tagihan Acara</span>
+                            <span className="text-[10px] uppercase font-bold text-[#5A6A85] block">Sisa Pembayaran Acara</span>
                             <span className="text-sm font-extrabold text-[#5D87FF] mt-0.5 block truncate">
                                 {formatCurrency(decisionInsights.upcomingReceivablesTotal)}
                             </span>
@@ -557,7 +557,7 @@ const InteractiveCashflowChart: React.FC<InteractiveCashflowChartProps> = React.
                     <div className="p-3 bg-white rounded-xl border border-[#EAEFF4] text-xs text-[#2A3547] flex items-start gap-2">
                         <Calendar className="w-4 h-4 text-[#5D87FF] flex-shrink-0 mt-0.5" />
                         <p className="leading-relaxed">
-                            Estimasi dihitung langsung dari transaksi tersimpan. Sisa tagihan dialokasikan ke bulan tanggal acara; jadwal pelunasan khusus tidak tersedia.
+                            Estimasi dihitung langsung dari transaksi tersimpan. Sisa pembayaran dialokasikan ke bulan tanggal acara; jadwal pelunasan khusus tidak tersedia.
                         </p>
                     </div>
                 </div>

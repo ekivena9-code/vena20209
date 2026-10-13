@@ -137,7 +137,7 @@ export const CreatePaymentTab: React.FC<CreatePaymentTabProps> = ({
           <label className="text-xs font-semibold text-brand-text-secondary">
             Jumlah Bayar
             <span className="text-brand-text-secondary/60 font-normal ml-1">
-              (Tagihan: {formatCurrency(paymentDetails.total)})
+              (Pembayaran: {formatCurrency(paymentDetails.total)})
             </span>
           </label>
           <input

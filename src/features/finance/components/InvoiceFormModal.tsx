@@ -133,7 +133,7 @@ export const InvoiceFormModal: React.FC<InvoiceFormModalProps> = ({
         {/* Quick Preview & Guidance Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-brand-surface rounded-xl border border-brand-border">
           <p className="hidden sm:block text-xs text-brand-text-secondary">
-            Lengkapi data tagihan di bawah, lalu klik <span className="font-bold text-brand-text-primary">Pratinjau Invoice</span> untuk melihat dokumen read-only sebelum difinalisasi.
+            Lengkapi rincian pembayaran di bawah, lalu klik <span className="font-bold text-brand-text-primary">Pratinjau Invoice</span> untuk melihat dokumen read-only sebelum difinalisasi.
           </p>
           <button
             type="button"
@@ -151,7 +151,7 @@ export const InvoiceFormModal: React.FC<InvoiceFormModalProps> = ({
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-brand-accent shrink-0" />
               <h4 className="text-sm font-bold text-brand-text-primary">
-                Informasi Pengantin / Penerima Tagihan
+                Informasi Pengantin / Pembayar
               </h4>
             </div>
 
@@ -596,7 +596,7 @@ export const InvoiceFormModal: React.FC<InvoiceFormModalProps> = ({
               )}
 
               <div className="border-t border-brand-border/80 pt-2 flex justify-between items-center">
-                <span className="text-sm font-bold text-brand-text-primary">Grand Total Tagihan:</span>
+                <span className="text-sm font-bold text-brand-text-primary">Grand Total Pembayaran:</span>
                 <span className="text-base font-black text-brand-accent">
                   {formatCurrency(formData.grandTotal)}
                 </span>
@@ -610,7 +610,7 @@ export const InvoiceFormModal: React.FC<InvoiceFormModalProps> = ({
               </div>
 
               <div className="border-t border-brand-border/60 pt-2 flex justify-between items-center font-bold">
-                <span className="text-slate-700">Sisa Tagihan:</span>
+                <span className="text-slate-700">Sisa Pembayaran:</span>
                 <span className={balanceDue > 0 ? 'text-[#DC2626] font-black' : 'text-[#166534]'}>
                   {formatCurrency(balanceDue)}
                 </span>

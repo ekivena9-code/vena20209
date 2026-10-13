@@ -391,7 +391,7 @@ export const Clients: React.FC<ClientsProps> = ({
             <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center justify-between gap-3">
                 <div>
                     <h2 className="text-xl font-bold text-[#2A3547] tracking-tight">Data Pengantin</h2>
-                    <p className="text-xs text-[#5A6A85] mt-0.5">Kelola seluruh data calon pengantin, tagihan, dan acara pernikahan</p>
+                    <p className="text-xs text-[#5A6A85] mt-0.5">Kelola seluruh data calon pengantin, pembayaran, dan acara pernikahan</p>
                 </div>
                 <div className="flex flex-wrap sm:flex-row items-center justify-end gap-2 sm:gap-3">
                     <button
@@ -452,8 +452,8 @@ export const Clients: React.FC<ClientsProps> = ({
                     }`}
                 >
                     <AlertCircleIcon className="w-4 h-4" />
-                    <span className="sm:hidden">Tagihan</span>
-                    <span className="hidden sm:inline">Tagihan Belum Lunas</span>
+                    <span className="sm:hidden">Pembayaran</span>
+                    <span className="hidden sm:inline">Pembayaran Belum Lunas</span>
                     {clientsWithDues.length > 0 && (
                         <span
                             className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${

@@ -1,16 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjs from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Configure worker to use the local same-origin worker from public/ directory
+// Load the worker from the same pdfjs-dist version as the API.
 if (typeof window !== 'undefined') {
-    try {
-        const origin = window.location.origin && window.location.origin !== 'null'
-            ? window.location.origin
-            : window.location.href.split('#')[0].split('?')[0].replace(/\/[^/]*$/, '');
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL('/pdf.worker.min.mjs', origin || window.location.href).href;
-    } catch {
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-    }
+    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 }
 
 interface PDFViewerProps {
@@ -163,7 +157,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ pdfUrl, pdfBlob, className = '' }
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
     const horizontalPadding = isMobile ? 24 : 48;
     const availableWidth = Math.max(100, containerWidth - horizontalPadding);
-    const targetPageWidth = Math.min(availableWidth, 360);
+    const targetPageWidth = Math.min(availableWidth, isMobile ? 360 : 900);
 
     return (
         <div

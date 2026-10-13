@@ -398,7 +398,7 @@ export function useFinanceCalculations({
             const totalTransportCosts = relevantTransactions
                 .filter(t => t.type === TransactionType.EXPENSE && isProductionCostCategory(t.category) && t.category.toLowerCase().includes('transport'))
                 .reduce((sum, t) => sum + t.amount, 0);
-            // Harga package = total tagihan dikurangi biaya tambahan dan transport
+            // Harga package = total pembayaran dikurangi biaya tambahan dan transport
             const totalPackageRevenue = clientProjectsInMonth.reduce((sum, p) => sum + (p.totalCost - (p.customCosts?.reduce((s, c) => s + c.amount, 0) || 0)), 0) - totalTransportCosts;
 
             const profit = totalIncome - totalCost;

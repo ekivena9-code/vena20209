@@ -23,7 +23,7 @@ export const DEFAULT_PACKAGE_TERMS: PackageTermItem[] = [
             'Booking paket dinyatakan sah setelah pembayaran Down Payment (DP) minimal 30%.',
             'Tanggal acara hanya akan di-lock setelah bukti transfer DP diverifikasi.',
             'Pelunasan total biaya paket dilakukan selambat-lambatnya H-7 sebelum hari pelaksanaan acara.',
-            'Pembayaran hanya sah melalui rekening resmi vendor yang tertera di dokumen tagihan.'
+            'Pembayaran hanya sah melalui rekening resmi vendor yang tertera di dokumen invoice.'
         ]
     },
     {
@@ -236,7 +236,7 @@ export const PackageTermsModal: React.FC<PackageTermsModalProps> = ({
                 <div className="p-3 bg-[#5D87FF]/5 border border-[#5D87FF]/20 rounded-xl flex items-start gap-2.5 text-xs text-[#5A6A85]">
                     <Info className="w-4 h-4 text-[#5D87FF] flex-shrink-0 mt-0.5" />
                     <div className="leading-relaxed">
-                        <span className="font-bold text-[#2A3547]">Pemisahan Syarat & Ketentuan:</span> Syarat di sini khusus tampil di halaman <span className="font-semibold text-[#5D87FF]">Katalog Paket Publik</span>. Untuk syarat & ketentuan yang tercantum pada lembar <span className="font-semibold text-[#2A3547]">Invoice</span> tagihan, diatur terpisah pada menu Profil Usaha (Pengaturan).
+                        <span className="font-bold text-[#2A3547]">Pemisahan Syarat & Ketentuan:</span> Syarat di sini khusus tampil di halaman <span className="font-semibold text-[#5D87FF]">Katalog Paket Publik</span>. Untuk syarat & ketentuan yang tercantum pada lembar <span className="font-semibold text-[#2A3547]">Invoice</span> pembayaran, diatur terpisah pada menu Profil Usaha (Pengaturan).
                     </div>
                 </div>
 

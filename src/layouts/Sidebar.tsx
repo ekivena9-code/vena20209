@@ -101,7 +101,7 @@ const NAV_MENUS: NavMenuItem[] = [
     section: 'Keuangan',
     items: [
       { view: ViewType.FINANCE, label: 'Arus Kas', icon: DollarSignIcon },
-      { view: ViewType.INVOICES, label: 'Tagihan & Invoice', icon: FileTextIcon },
+      { view: ViewType.INVOICES, label: 'Pembayaran & Invoice', icon: FileTextIcon },
     ],
   },
 

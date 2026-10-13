@@ -197,7 +197,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     if (paymentData && Number(paymentData.amount) > 0 && paymentData.destinationCardId && project) {
       const amount = Number(paymentData.amount);
       if (amount > (project.totalCost - project.amountPaid)) {
-        alert('Jumlah pembayaran melebihi sisa tagihan.');
+        alert('Jumlah pembayaran melebihi sisa pembayaran.');
         return;
       }
       onRecordPayment(projectId, amount, paymentData.destinationCardId);
@@ -559,7 +559,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
             {/* Financial summary cards */}
             <div>
-              <SectionTitle sub="Total Package, pembayaran, dan sisa tagihan pengantin ini">
+              <SectionTitle sub="Total Package, pembayaran, dan sisa pembayaran pengantin ini">
                 Ringkasan Keuangan
               </SectionTitle>
               <div className="grid grid-cols-2 gap-3">
@@ -583,7 +583,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                     text: 'text-emerald-700',
                   },
                   {
-                    label: 'Sisa Tagihan',
+                    label: 'Sisa Pembayaran',
                     value: formatCurrency(totalDue),
                     accent: totalDue > 0 ? 'from-red-50 to-white border-red-100' : 'from-emerald-50 to-white border-emerald-100',
                     text: totalDue > 0 ? 'text-red-700' : 'text-emerald-700',
@@ -739,7 +739,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-bold text-gray-950">Catat Pembayaran Masuk</h4>
-                        <span className="text-xs font-semibold bg-gray-100 text-gray-800 px-2.5 py-1 rounded-md border border-gray-200">Sisa Tagihan: {formatCurrency(remainingBalance)}</span>
+                        <span className="text-xs font-semibold bg-gray-100 text-gray-800 px-2.5 py-1 rounded-md border border-gray-200">Sisa Pembayaran: {formatCurrency(remainingBalance)}</span>
                       </div>
                       
                       {remainingBalance > 0 && (
@@ -748,16 +748,16 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                             type="button"
                             onClick={() => handleNewPaymentChange(p.id, 'amount', String(remainingBalance))}
                             className="text-[10px] font-bold text-gray-700 underline underline-offset-2 hover:text-gray-950"
-                            title="Isi otomatis dengan seluruh sisa tagihan"
+                            title="Isi otomatis dengan seluruh sisa pembayaran"
                           >
-                            Isi otomatis sisa tagihan
+                            Isi otomatis sisa pembayaran
                           </button>
                         </div>
                       )}
                       {remainingBalance <= 0 ? (
                         <div className="px-4 py-3 flex items-center gap-2 bg-gray-50 rounded-lg text-gray-800 border border-gray-200">
                           <CheckIcon className="w-4 h-4 text-emerald-600" />
-                          <span className="text-xs font-semibold">Semua pembayaran telah lunas — tidak ada sisa tagihan.</span>
+                          <span className="text-xs font-semibold">Semua pembayaran telah lunas — tidak ada sisa pembayaran.</span>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
