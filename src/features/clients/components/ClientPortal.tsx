@@ -228,7 +228,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
     { key: 'meeting', label: 'Jadwal Meeting', active: 'tab-active-mono' },
     { key: 'dokumen', label: 'Link File', active: 'tab-active-mono' },
     ...(!isVendorClient ? [{ key: 'keuangan', label: 'Invoice', active: 'tab-active-mono' }] : []),
-    ...(!isVendorClient ? [{ key: 'syarat-paket', label: 'Syarat Paket', active: 'tab-active-mono' }] : []),
+    ...(!isVendorClient ? [{ key: 'syarat-paket', label: 'Syarat & Ketentuan', active: 'tab-active-mono' }] : []),
     ...(!isVendorClient ? [{ key: 'workflow', label: 'Workflow', active: 'tab-active-mono' }] : []),
     { key: 'testimoni', label: 'Testimoni', active: 'tab-active-mono' },
   ];

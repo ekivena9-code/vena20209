@@ -57,10 +57,13 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
 
   // Find the package description
   const mainPackage = safePackages.find(p => p.id === project.packageId || p.name === project.packageName);
+  let displayTeam = '';
   let displayDigitalItems: string[] = [];
   let displayPhysicalItems: PhysicalItem[] = [];
   if (mainPackage) {
     const selectedOption = mainPackage.durationOptions?.find(opt => opt.label === project.durationSelection);
+    displayTeam = selectedOption?.photographers?.trim()
+      || [mainPackage.photographers, mainPackage.videographers].filter(Boolean).join(' & ');
 
     // Try to get from selected option first
     if (selectedOption) {
@@ -174,6 +177,12 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
                 <td className="px-1.5 py-1 sm:px-3 sm:py-2 border-r border-black align-top">
                   <div className="invoice-desc-box m-0 p-0 block">
                     <p className="invoice-item-title invoice-item-title-main font-bold text-slate-800 text-[8.5px] sm:text-[13px] print:text-black m-0 p-0">{project.packageName}</p>
+                    {displayTeam && (
+                      <p className="invoice-item-sub text-[7px] sm:text-[10px] text-slate-500 leading-tight flex items-start gap-1">
+                        <span className="shrink-0">•</span>
+                        <span>{displayTeam}</span>
+                      </p>
+                    )}
                     {displayDigitalItems.length > 0 ? (
                       <div className="mt-0.5 sm:mt-1 space-y-0 sm:space-y-0.5">
                         {displayDigitalItems.map((item, idx) => (

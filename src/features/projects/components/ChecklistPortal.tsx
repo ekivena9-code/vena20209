@@ -51,7 +51,7 @@ export default function ChecklistPortal({ projectId }: Props) {
       try {
         setLoading(true);
         const [proj, checklist] = await Promise.all([
-          getProjectWithRelations(projectId).catch((): null => null),
+          getProjectWithRelations(projectId, { includeChecklist: false }).catch((): null => null),
           listChecklistByProject(projectId).catch((): any[] => [])
         ]);
         if (!mounted) return;

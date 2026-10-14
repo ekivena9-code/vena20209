@@ -13,11 +13,11 @@ import './styles/print.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10 * 60 * 1000, // 10 minutes cache
+      staleTime: 30 * 1000,
       gcTime: 30 * 60 * 1000, // 30 minutes in memory
-      refetchOnWindowFocus: false, // Prevents laggy refetches on tab or iframe focus
-      refetchOnMount: false,
-      refetchOnReconnect: false,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
       retry: 1,
     },
   },

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ExternalLink, MessageCircle } from 'lucide-react';
 import { BioLinkPage as BioLinkPageData } from '../../types';
 import { getBioLinkPage } from '../../services/bioLinks';
+import { useSupabaseRealtimeRefresh } from '../../hooks/useSupabaseRealtimeRefresh';
 
 interface BioLinkPageProps {
   slug?: string;
@@ -11,6 +12,11 @@ const BioLinkPage: React.FC<BioLinkPageProps> = ({ slug }) => {
   const [page, setPage] = useState<BioLinkPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+
+  useSupabaseRealtimeRefresh('public-bio-link', ['bio_link_pages'], () => {
+    setRefreshVersion(version => version + 1);
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +31,7 @@ const BioLinkPage: React.FC<BioLinkPageProps> = ({ slug }) => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, refreshVersion]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-[#f8f8f8] text-sm text-[#737373]">Memuat halaman...</div>;

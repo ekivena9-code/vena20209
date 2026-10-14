@@ -6,6 +6,7 @@ import { getProjectWithRelations } from '../../../services/projects';
 import { getClient } from '../../../services/clients';
 import { listPackages } from '../../../services/packages';
 import { getProfile } from '../../../services/profile';
+import { useSupabaseRealtimeRefresh } from '../../../hooks/useSupabaseRealtimeRefresh';
 
 interface PublicInvoiceProps {
     projectId: string;
@@ -22,6 +23,11 @@ const PublicInvoice: React.FC<PublicInvoiceProps> = ({ projectId }) => {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [refreshVersion, setRefreshVersion] = useState(0);
+
+    useSupabaseRealtimeRefresh('public-invoice', ['projects', 'project_add_ons', 'clients', 'packages', 'profiles'], () => {
+        setRefreshVersion(version => version + 1);
+    });
 
     useEffect(() => {
         if (!projectId) {
@@ -34,7 +40,6 @@ const PublicInvoice: React.FC<PublicInvoiceProps> = ({ projectId }) => {
 
         const fetchData = async () => {
             try {
-                setLoading(true);
                 setError(null);
 
                 // Fetch everything in parallel
@@ -75,7 +80,7 @@ const PublicInvoice: React.FC<PublicInvoiceProps> = ({ projectId }) => {
 
         fetchData();
         return () => { cancelled = true; };
-    }, [projectId]);
+    }, [projectId, refreshVersion]);
 
     const handleDownloadPDF = async () => {
         const element = document.getElementById('invoice-document');

@@ -3,6 +3,7 @@ import { ZoomIn, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VendorPortfolio } from '../../types';
 import { getVendorPortfolio } from '../../services/vendorPortfolios';
 import { getVendorProfile } from '../../services/vendorProfile';
+import { useSupabaseRealtimeRefresh } from '../../hooks/useSupabaseRealtimeRefresh';
 
 const PortfolioDetailPage: React.FC = () => {
     const [portfolio, setPortfolio] = useState<VendorPortfolio | null>(null);
@@ -11,6 +12,11 @@ const PortfolioDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [lightboxImg, setLightboxImg] = useState<string | null>(null);
     const [lightboxIndex, setLightboxIndex] = useState<number>(0);
+    const [refreshVersion, setRefreshVersion] = useState(0);
+
+    useSupabaseRealtimeRefresh('public-portfolio-detail', ['vendor_profiles', 'vendor_portfolios'], () => {
+        setRefreshVersion(version => version + 1);
+    });
 
     useEffect(() => {
         const hash = window.location.hash;
@@ -35,7 +41,7 @@ const PortfolioDetailPage: React.FC = () => {
             }
         };
         loadData();
-    }, []);
+    }, [refreshVersion]);
 
     const images = portfolio?.images || [];
 

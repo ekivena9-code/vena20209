@@ -553,7 +553,10 @@ export async function listProjectsByClientId(clientId: string): Promise<Project[
 }
 
 // Enhanced function to get project with all related data
-export async function getProjectWithRelations(projectId: string): Promise<Project | null> {
+export async function getProjectWithRelations(
+  projectId: string,
+  options: { includeChecklist?: boolean } = {},
+): Promise<Project | null> {
   let data: any = null;
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
     const result = await supabase.from(PROJECTS).select('*').eq('id', projectId).maybeSingle();
@@ -602,10 +605,12 @@ export async function getProjectWithRelations(projectId: string): Promise<Projec
         console.warn('Failed to fetch team assignments:', e);
         return [];
       }),
-      listChecklistByProject(projectId).catch((e: Error): any[] => {
-        console.warn('Failed to fetch wedding day checklist:', e);
-        return [];
-      }),
+      options.includeChecklist === false
+        ? Promise.resolve([])
+        : listChecklistByProject(projectId).catch((e: Error): any[] => {
+            console.warn('Failed to fetch wedding day checklist:', e);
+            return [];
+          }),
       (async (): Promise<any[]> => {
         try {
           const { data: addOnData, error: addOnError } = await supabase

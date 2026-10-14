@@ -22,81 +22,81 @@ const DEFAULT_LIMIT = 100;
 export const useClientsQuery = () => useQuery({
     queryKey: ['clients'],
     queryFn: () => listClients({ limit: 5000 }),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useProjectsQuery = () => useQuery({
     queryKey: ['projects'],
     queryFn: () => listProjectsWithRelations({ limit: 5000 }),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useTransactionsQuery = () => useQuery({
     queryKey: ['transactions'],
     queryFn: () => listTransactions({ limit: DEFAULT_LIMIT }),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useTeamMembersQuery = () => useQuery({
     queryKey: ['teamMembers'],
     queryFn: () => listTeamMembers({ limit: DEFAULT_LIMIT }),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useLeadsQuery = () => useQuery({
     queryKey: ['leads'],
     queryFn: () => listLeads({ limit: DEFAULT_LIMIT }),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useCardsQuery = () => useQuery({
     queryKey: ['cards'],
     queryFn: () => listCards().then(res => res.map(normalizeCard)),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const usePocketsQuery = () => useQuery({
     queryKey: ['pockets'],
     queryFn: () => listPockets(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const usePackagesQuery = () => useQuery({
     queryKey: ['packages'],
     queryFn: () => listPackages(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useAddOnsQuery = () => useQuery({
     queryKey: ['addOns'],
     queryFn: () => listAddOns(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useCalendarEventsQuery = () => useQuery({
     queryKey: ['calendarEvents'],
     queryFn: () => listCalendarEvents(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 // ─── Auxiliary domain queries ────────────────────────────────────────────
@@ -106,47 +106,47 @@ export const useCalendarEventsQuery = () => useQuery({
 export const useContractsQuery = () => useQuery({
     queryKey: ['contracts'],
     queryFn: () => listContracts(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const usePromoCodesQuery = () => useQuery({
     queryKey: ['promoCodes'],
     queryFn: () => listPromoCodes(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useProfileQuery = () => useQuery({
     queryKey: ['profile'],
     queryFn: () => getProfile(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useTeamProjectPaymentsQuery = () => useQuery({
     queryKey: ['teamProjectPayments'],
     queryFn: () => listAllTeamPayments(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useTeamPaymentRecordsQuery = () => useQuery({
     queryKey: ['teamPaymentRecords'],
     queryFn: () => listTeamPaymentRecords(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });
 
 export const useNotificationsQuery = () => useQuery({
     queryKey: ['notifications'],
     queryFn: () => listNotifications(),
-    staleTime: 60 * 1000, // 1 minute — notifications change often
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
 });

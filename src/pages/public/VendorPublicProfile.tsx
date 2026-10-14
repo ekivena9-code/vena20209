@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { VendorProfile, VendorPortfolio } from '../../types';
 import { getVendorProfile } from '../../services/vendorProfile';
 import { listVendorPortfolios } from '../../services/vendorPortfolios';
 import { getEmbedVideoUrl } from '../../utils/videoUtils';
+import { useSupabaseRealtimeRefresh } from '../../hooks/useSupabaseRealtimeRefresh';
 
 const FAQ_OPEN_DEFAULT = new Set<string>();
 
@@ -18,23 +19,26 @@ const VendorPublicProfile: React.FC = () => {
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
     const [openFaqIds, setOpenFaqIds] = useState<string[]>([]);
 
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                const [profileData, portfoliosData] = await Promise.all([
-                    getVendorProfile(),
-                    listVendorPortfolios()
-                ]);
-                if (profileData) setProfile(profileData);
-                setPortfolios(portfoliosData);
-            } catch (error) {
-                console.error("Error loading vendor public profile:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadData();
+    const loadData = useCallback(async () => {
+        try {
+            const [profileData, portfoliosData] = await Promise.all([
+                getVendorProfile(),
+                listVendorPortfolios()
+            ]);
+            setProfile(profileData);
+            setPortfolios(portfoliosData);
+        } catch (error) {
+            console.error("Error loading vendor public profile:", error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
+
+    useSupabaseRealtimeRefresh('public-vendor-profile', ['vendor_profiles', 'vendor_portfolios'], loadData);
 
     useEffect(() => {
         if (!profile?.hero_images || profile.hero_images.length <= 1) return;

@@ -9,6 +9,7 @@ import Modal from '../../../shared/ui/Modal';
 import SignaturePad from '../../../shared/ui/SignaturePad';
 import PDFViewer from '../../../shared/ui/PDFViewer';
 import { generatePDFBlob } from '../../../shared/utils/pdfUtils';
+import { useSupabaseRealtimeRefresh } from '../../../hooks/useSupabaseRealtimeRefresh';
 
 interface PublicContractProps {
     contractId: string;
@@ -25,6 +26,11 @@ const PublicContract: React.FC<PublicContractProps> = ({ contractId }) => {
 
     const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [refreshVersion, setRefreshVersion] = useState(0);
+
+    useSupabaseRealtimeRefresh('public-contract', ['contracts', 'projects', 'project_add_ons', 'profiles'], () => {
+        setRefreshVersion(version => version + 1);
+    });
 
     useEffect(() => {
         if (!contractId) {
@@ -37,7 +43,6 @@ const PublicContract: React.FC<PublicContractProps> = ({ contractId }) => {
 
         const fetchData = async () => {
             try {
-                setLoading(true);
                 setError(null);
 
                 const fetchedContract = await getContract(contractId);
@@ -79,7 +84,7 @@ const PublicContract: React.FC<PublicContractProps> = ({ contractId }) => {
 
         fetchData();
         return () => { cancelled = true; };
-    }, [contractId]);
+    }, [contractId, refreshVersion]);
 
     const handleGeneratePreview = async () => {
         if (!contract) return;

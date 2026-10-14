@@ -1087,7 +1087,7 @@ export const Packages: React.FC<PackagesProps> = ({
                         title="Kelola Syarat & Ketentuan Paket (Katalog Publik)"
                     >
                         <FileText className="w-4 h-4 text-[#5A6A85]" />
-                        <span className="hidden xs:inline sm:inline">Syarat Paket</span>
+                        <span className="hidden xs:inline sm:inline">Syarat & Ketentuan</span>
                     </button>
 
                     <button

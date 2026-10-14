@@ -66,6 +66,42 @@ export function resolvePackageShareIdentifier<T extends { id: string; name: stri
   return slugMatches.length === 1 ? slugMatches[0] : null;
 }
 
+export function normalizePublicBookingRegion(region?: string | null): string | null {
+  const value = region?.trim();
+  if (!value) return null;
+
+  const normalized = value.toLowerCase();
+  const allRegionAliases = new Set(['all', 'semua', 'semua-daerah', 'semua daerah', 'all-region', 'all-regions']);
+
+  if (allRegionAliases.has(normalized)) {
+    return 'all';
+  }
+
+  return normalized;
+}
+
+export function getPublicBookingRegionOptions(
+  regions: Array<{ value: string; label: string }> = [],
+  includeAll = true
+): Array<{ value: string; label: string }> {
+  const seen = new Set<string>();
+  const options: Array<{ value: string; label: string }> = [];
+
+  if (includeAll) {
+    options.push({ value: 'all', label: 'Semua Daerah' });
+    seen.add('all');
+  }
+
+  for (const region of regions ?? []) {
+    const normalizedValue = normalizePublicBookingRegion(region.value) ?? region.value.toLowerCase();
+    if (normalizedValue === 'all' || seen.has(normalizedValue)) continue;
+    seen.add(normalizedValue);
+    options.push({ value: normalizedValue, label: region.label || normalizedValue });
+  }
+
+  return options;
+}
+
 export function publicNameFromSlug(slug: string): string {
   return slug.trim().replace(/-and-/gi, ' & ').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PackageTermItem, Profile } from '../../../types';
 import { DEFAULT_PACKAGE_TERMS } from '../packageTerms';
 import {
@@ -9,7 +9,6 @@ import {
     Trash2,
     Copy,
     Check,
-    RotateCcw,
     Sparkles,
     ShieldCheck,
     Info,
@@ -37,9 +36,15 @@ export const PackageTermsModal: React.FC<PackageTermsModalProps> = ({
     const [formItemsText, setFormItemsText] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const wasOpen = useRef(false);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            wasOpen.current = false;
+            return;
+        }
+        if (wasOpen.current) return;
+        wasOpen.current = true;
 
         if (profile.publicPageConfig?.packageTerms && profile.publicPageConfig.packageTerms.length > 0) {
             setTerms(profile.publicPageConfig.packageTerms);
@@ -133,14 +138,6 @@ export const PackageTermsModal: React.FC<PackageTermsModalProps> = ({
     const handleCancelFormItem = () => {
         setEditingTermId(null);
         setErrorMsg('');
-    };
-
-    const handleResetDefaults = () => {
-        if (window.confirm('Kembalikan syarat & ketentuan paket ke template standar bawaan? Perubahan kustom yang belum disimpan akan digantikan.')) {
-            setTerms(DEFAULT_PACKAGE_TERMS);
-            setEditingTermId(null);
-            showNotification('Syarat & ketentuan paket di-reset ke template standar.');
-        }
     };
 
     const handleSaveAll = async () => {
@@ -272,7 +269,7 @@ export const PackageTermsModal: React.FC<PackageTermsModalProps> = ({
                                     className="px-4 py-2 rounded-xl bg-[#5D87FF] hover:bg-[#4871e3] text-white font-semibold text-xs transition-all shadow-[0_4px_12px_rgba(93,135,255,0.25)] flex items-center gap-1.5 cursor-pointer"
                                 >
                                     <Check className="w-3.5 h-3.5" />
-                                    <span>Simpan Bagian Ini</span>
+                                    <span>Terapkan Bagian Ini</span>
                                 </button>
                             </div>
                         </div>
@@ -366,15 +363,6 @@ export const PackageTermsModal: React.FC<PackageTermsModalProps> = ({
 
                 {/* Footer */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3 border-t border-[#EAEFF4]">
-                    <button
-                        type="button"
-                        onClick={handleResetDefaults}
-                        className="text-xs text-[#5A6A85] hover:text-[#2A3547] flex items-center justify-center gap-1.5 font-medium transition-colors py-1 cursor-pointer"
-                    >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Kembalikan Template Default</span>
-                    </button>
-
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
@@ -394,7 +382,7 @@ export const PackageTermsModal: React.FC<PackageTermsModalProps> = ({
                             ) : (
                                 <>
                                     <Check className="w-4 h-4" />
-                                    <span>Simpan Syarat & Ketentuan Paket</span>
+                                    <span>Simpan Semua Perubahan</span>
                                 </>
                             )}
                         </button>

@@ -60,8 +60,8 @@ export const useDashboardStats = () => useQuery({
       expense: exp,
     };
   },
-  staleTime: 2 * 60 * 1000, // 2 minutes for stats
+  staleTime: 30 * 1000,
   refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-  refetchOnWindowFocus: false,
-  refetchOnMount: false,
+  refetchOnWindowFocus: true,
+  refetchOnMount: true,
 });

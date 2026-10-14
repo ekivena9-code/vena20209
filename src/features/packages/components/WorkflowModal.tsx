@@ -9,7 +9,6 @@ import {
     Trash2,
     Copy,
     Check,
-    RotateCcw,
     Sparkles,
     Calendar,
     ArrowRight
@@ -150,14 +149,6 @@ export const WorkflowModal: React.FC<WorkflowModalProps> = ({
     const handleCancelFormItem = () => {
         setEditingWorkflowId(null);
         setErrorMsg('');
-    };
-
-    const handleResetDefaults = () => {
-        if (window.confirm('Kembalikan workflow ke template standar bawaan? Perubahan kustom yang belum disimpan akan digantikan.')) {
-            setWorkflows(DEFAULT_WORKFLOWS);
-            setEditingWorkflowId(null);
-            showNotification('Workflow di-reset ke template standar.');
-        }
     };
 
     const handleSaveAll = async () => {
@@ -385,15 +376,6 @@ export const WorkflowModal: React.FC<WorkflowModalProps> = ({
 
                 {/* Footer */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3 border-t border-[#EAEFF4]">
-                    <button
-                        type="button"
-                        onClick={handleResetDefaults}
-                        className="text-xs text-[#5A6A85] hover:text-[#2A3547] flex items-center justify-center gap-1.5 font-medium transition-colors py-1 cursor-pointer"
-                    >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Kembalikan Template Default</span>
-                    </button>
-
                     <div className="flex items-center gap-2">
                         <button
                             type="button"

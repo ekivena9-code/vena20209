@@ -4,6 +4,7 @@ import { Gallery, GalleryImage, Profile } from '../../../types';
 import { getPublicGallery } from '../../../services/galleries';
 import { getProfile } from '../../../services/profile';
 import { cleanPhoneNumber } from '../../../constants';
+import { useSupabaseRealtimeRefresh } from '../../../hooks/useSupabaseRealtimeRefresh';
 
 interface PublicGalleryProps {
     galleryId: string;
@@ -80,7 +81,6 @@ const PublicGallery: React.FC<PublicGalleryProps> = ({ galleryId }) => {
 
     const loadGalleryData = useCallback(async () => {
         try {
-            setIsLoading(true);
             setError(null);
             const [galleryData, profileData] = await Promise.all([
                 getPublicGallery(galleryId).catch((err): null => {
@@ -134,6 +134,8 @@ const PublicGallery: React.FC<PublicGalleryProps> = ({ galleryId }) => {
     useEffect(() => {
         loadGalleryData();
     }, [loadGalleryData]);
+
+    useSupabaseRealtimeRefresh('public-gallery', ['galleries', 'profiles'], loadGalleryData);
 
     useEffect(() => {
         if (selectedImage) {

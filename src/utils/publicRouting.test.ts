@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { getGalleryPublicRouteId, getPackageShareIdentifier, publicNameFromSlug, publicNamePatternsFromSlug, resolvePackageShareIdentifier, toGalleryPublicSlug, toPublicNameSlug } from './publicRouting';
+import {
+  getGalleryPublicRouteId,
+  getPackageShareIdentifier,
+  getPublicBookingRegionOptions,
+  normalizePublicBookingRegion,
+  publicNameFromSlug,
+  publicNamePatternsFromSlug,
+  resolvePackageShareIdentifier,
+  toGalleryPublicSlug,
+  toPublicNameSlug,
+} from './publicRouting';
 
 describe('public name slugs', () => {
   it('creates a readable slug without URL escape sequences', () => {
@@ -56,5 +66,19 @@ describe('public name slugs', () => {
     ]);
     expect(publicNamePatternsFromSlug('name%wildcard')).toBeNull();
     expect(publicNamePatternsFromSlug('a-and-b-and-c-and-d-and-e-and-f')).toEqual([]);
+  });
+
+  it('normalizes booking regions and includes an all-regions option', () => {
+    const options = getPublicBookingRegionOptions([
+      { value: 'jabodetabek', label: 'Jabodetabek' },
+      { value: 'banten', label: 'Banten' },
+      { value: 'surabaya', label: 'Surabaya' },
+    ]);
+
+    expect(normalizePublicBookingRegion(' JABODETABEK ')).toBe('jabodetabek');
+    expect(normalizePublicBookingRegion('all')).toBe('all');
+    expect(normalizePublicBookingRegion('')).toBeNull();
+    expect(options[0]).toEqual({ value: 'all', label: 'Semua Daerah' });
+    expect(options.map(option => option.value)).toContain('surabaya');
   });
 });

@@ -5,6 +5,7 @@ import { getTransaction } from '../../../services/transactions';
 import { getProjectWithRelations } from '../../../services/projects';
 import { getProfile } from '../../../services/profile';
 import { getClient } from '../../../services/clients';
+import { useSupabaseRealtimeRefresh } from '../../../hooks/useSupabaseRealtimeRefresh';
 
 interface PublicReceiptProps {
     transactionId: string;
@@ -17,6 +18,11 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [refreshVersion, setRefreshVersion] = useState(0);
+
+    useSupabaseRealtimeRefresh('public-receipt', ['transactions', 'projects', 'project_add_ons', 'clients', 'profiles'], () => {
+        setRefreshVersion(version => version + 1);
+    });
 
     useEffect(() => {
         if (!transactionId) {
@@ -29,7 +35,6 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
 
         const fetchData = async () => {
             try {
-                setLoading(true);
                 setError(null);
 
                 const [fetchedTx, fetchedProfile] = await Promise.all([
@@ -72,7 +77,7 @@ const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
 
         fetchData();
         return () => { cancelled = true; };
-    }, [transactionId]);
+    }, [transactionId, refreshVersion]);
 
     const handleDownloadPDF = async () => {
         const element = document.getElementById('receipt-document');

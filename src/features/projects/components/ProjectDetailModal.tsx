@@ -757,7 +757,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 { id: 'info', label: 'Info & Status' },
                 { id: 'meetings', label: 'Meeting' },
                 { id: 'team', label: `Tim & Paket (${selectedProject.team?.length || 0})` },
-                { id: 'terms', label: 'Syarat Paket' },
+                { id: 'terms', label: 'Syarat & Ketentuan' },
                 { id: 'workflow', label: 'Workflow' },
                 { id: 'files', label: 'File & Link' },
               ] as const).map(tab => {
@@ -1153,13 +1153,13 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
           {(mobileSectionTab === 'all' || mobileSectionTab === 'terms') && (
             <section className="pt-3 border-t border-slate-200">
-              <PackageTermsDisplay terms={packageTerms} packageName={pkg?.name || selectedProject.packageName} />
+              <PackageTermsDisplay terms={packageTerms} packageName={pkg?.name || selectedProject.packageName} showHeader={false} />
             </section>
           )}
 
           {(mobileSectionTab === 'all' || mobileSectionTab === 'workflow') && (
             <section className="pt-3 border-t border-slate-200">
-              <WorkflowDisplay workflows={workflows} projectName={selectedProject.projectName} />
+              <WorkflowDisplay workflows={workflows} projectName={selectedProject.projectName} showHeader={false} />
             </section>
           )}
 

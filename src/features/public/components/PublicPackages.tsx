@@ -414,42 +414,52 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
         const transportFee = Number(formData.transportCost) || 0;
 
         // Persist to Supabase
-        const createdClient = await createClient({
-            name: formData.clientName,
-            email: formData.email,
-            phone: formData.phone,
-            whatsapp: formData.phone || undefined,
-            instagram: formData.instagram || undefined,
-            since: new Date().toISOString().split('T')[0],
-            status: ClientStatus.ACTIVE,
-            clientType: ClientType.DIRECT,
-            lastContact: new Date().toISOString(),
-            portalAccessId: crypto.randomUUID(),
-        });
+        let createdClient: Client;
+        let createdProject: Project;
+        try {
+            createdClient = await createClient({
+                name: formData.clientName,
+                email: formData.email,
+                phone: formData.phone,
+                whatsapp: formData.phone || undefined,
+                instagram: formData.instagram || undefined,
+                since: new Date().toISOString().split('T')[0],
+                status: ClientStatus.ACTIVE,
+                clientType: ClientType.DIRECT,
+                lastContact: new Date().toISOString(),
+                portalAccessId: crypto.randomUUID(),
+            });
 
-        const createdProject = await createProject({
-            projectName: `${formData.clientName} (${bookingModal.pkg.name})`,
-            clientName: createdClient.name,
-            clientId: createdClient.id,
-            projectType: bookingModal.pkg.category,
-            packageName: bookingModal.pkg.name,
-            date: formData.date,
-            location: formData.location || 'Akan dikonfirmasi',
-            status: 'Dikonfirmasi',
-            bookingStatus: BookingStatus.BARU,
-            totalCost: totalProject,
-            amountPaid: dpAmount,
-            paymentStatus: dpAmount >= totalProject ? PaymentStatus.LUNAS : (dpAmount > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR),
-            notes: `Booking dari halaman Package.${formData.durationSelection ? ` Durasi dipilih: ${formData.durationSelection}.` : ''}`,
-            durationSelection: formData.durationSelection || undefined,
-            unitPrice: formData.unitPrice !== undefined ? Number(formData.unitPrice) : undefined,
-            promoCodeId: promoCodeAppliedId,
-            discountAmount: discountAmount > 0 ? discountAmount : undefined,
-            transportCost: transportFee > 0 ? transportFee : undefined,
-            completedDigitalItems: [],
-            dpProofUrl: dpProofUrl || undefined,
-            addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
-        });
+            createdProject = await createProject({
+                projectName: `${formData.clientName} (${bookingModal.pkg.name})`,
+                clientName: createdClient.name,
+                clientId: createdClient.id,
+                projectType: bookingModal.pkg.category,
+                packageName: bookingModal.pkg.name,
+                packageId: bookingModal.pkg.id,
+                date: formData.date,
+                location: formData.location || 'Akan dikonfirmasi',
+                status: 'Dikonfirmasi',
+                bookingStatus: BookingStatus.BARU,
+                totalCost: totalProject,
+                amountPaid: dpAmount,
+                paymentStatus: dpAmount >= totalProject ? PaymentStatus.LUNAS : (dpAmount > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR),
+                notes: `Booking dari halaman Package.${formData.durationSelection ? ` Durasi dipilih: ${formData.durationSelection}.` : ''}`,
+                durationSelection: formData.durationSelection || undefined,
+                unitPrice: formData.unitPrice !== undefined ? Number(formData.unitPrice) : undefined,
+                promoCodeId: promoCodeAppliedId,
+                discountAmount: discountAmount > 0 ? discountAmount : undefined,
+                transportCost: transportFee > 0 ? transportFee : undefined,
+                completedDigitalItems: [],
+                dpProofUrl: dpProofUrl || undefined,
+                addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
+            });
+        } catch (err) {
+            console.error('Gagal menyimpan booking ke Supabase:', err);
+            alert('Gagal menyimpan booking. Silakan periksa koneksi dan coba lagi.');
+            setIsSubmitting(false);
+            return;
+        }
 
         // Konversi lead: jika ada lid di URL → update lead existing, jika tidak → buat lead baru
         if (urlLeadId) {

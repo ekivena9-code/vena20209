@@ -10,7 +10,7 @@ import { createLead as createLeadRow, updateLead as updateLeadRow } from '../../
 import { uploadDpProof } from '../../../services/storage';
 import { createTransaction } from '../../../services/transactions';
 import RupiahInput from '../../../shared/form/RupiahInput';
-import { buildPublicShareUrl, resolvePackageShareIdentifier, toPublicNameSlug } from '../../../utils/publicRouting';
+import { buildPublicShareUrl, getPublicBookingRegionOptions, normalizePublicBookingRegion, resolvePackageShareIdentifier, toPublicNameSlug } from '../../../utils/publicRouting';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -123,23 +123,27 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
         return Array.from(set).sort((a, b) => a.localeCompare(b));
     }, [packages]);
     const unionRegions = useMemo(() => {
-        const baseVals = REGIONS.map(r => r.value);
-        const extra = existingRegions.filter(er => !baseVals.includes(er));
+        const baseVals = REGIONS.map(r => r.value.toLowerCase());
+        const extra = existingRegions.filter(er => !baseVals.includes(er.toLowerCase()));
         return [
             ...REGIONS.map(r => ({ value: r.value, label: r.label })),
             ...extra.map(er => ({ value: er, label: titleCase(er) })),
         ];
     }, [existingRegions]);
 
+    const regionOptions = useMemo(() => getPublicBookingRegionOptions(unionRegions), [unionRegions]);
+
     // Filter Packages by selectedRegion (strict)
     // Filter and sort Packages by selectedRegion and userProfile packageOrder
     const filteredPackages = useMemo(() => {
-        if (!selectedRegion) return [] as Package[];
         const pks = (packages || []);
-        const filtered = pks.filter(p => {
-            const pkgRegion = p.region ? String(p.region).toLowerCase() : '';
-            return pkgRegion === selectedRegion.toLowerCase();
-        });
+        const normalizedRegion = normalizePublicBookingRegion(selectedRegion);
+        const filtered = normalizedRegion && normalizedRegion !== 'all'
+            ? pks.filter(p => {
+                const pkgRegion = p.region ? String(p.region).toLowerCase() : '';
+                return pkgRegion === normalizedRegion;
+            })
+            : [...pks];
         const order = userProfile?.publicPageConfig?.packageOrder;
         if (order && order.length > 0) {
             const orderMap = new Map(order.map((id, idx) => [id, idx]));
@@ -194,11 +198,13 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
 
     // Filter and sort Add-Ons by selectedRegion and userProfile addOnOrder
     const filteredAddOns = useMemo(() => {
-        if (!selectedRegion) return [] as AddOn[];
-        const filtered = (addOns || []).filter(a => {
-            const addonRegion = a.region ? String(a.region).toLowerCase() : '';
-            return addonRegion === selectedRegion.toLowerCase();
-        });
+        const normalizedRegion = normalizePublicBookingRegion(selectedRegion);
+        const filtered = normalizedRegion && normalizedRegion !== 'all'
+            ? (addOns || []).filter(a => {
+                const addonRegion = a.region ? String(a.region).toLowerCase() : '';
+                return addonRegion === normalizedRegion;
+            })
+            : [...(addOns || [])];
         const order = userProfile?.publicPageConfig?.addOnOrder;
         if (order && order.length > 0) {
             const orderMap = new Map(order.map((id, idx) => [id, idx]));
@@ -217,8 +223,8 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
         if (hash.includes('?')) {
             const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
             const regionParam = urlParams.get('region');
-            if (regionParam) {
-                const normalizedRegion = regionParam.toLowerCase();
+            const normalizedRegion = normalizePublicBookingRegion(regionParam);
+            if (normalizedRegion) {
                 setSelectedRegion(normalizedRegion);
             }
         }
@@ -739,14 +745,14 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
         );
     }
     // Region gate: do not show all regions. Ask user to choose a region link first.
-    if (!selectedRegion) {
+    if (selectedRegion === null) {
         return (
             <div className="flex items-center justify-center min-h-screen p-3 md:p-4">
                 <div className="w-full max-w-lg p-6 md:p-8 text-center bg-public-surface rounded-2xl shadow-lg border border-public-border">
                     <h4 className="text-xl font-bold text-gradient mb-6">Informasi Pengantin & Acara Pernikahan</h4>
                     <p className="mt-3 text-public-text-secondary text-xs md:text-sm">Untuk meminimalisir kesalahan, silakan pilih wilayah terlebih dahulu.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
-                        {unionRegions.map(r => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                        {regionOptions.map(r => (
                             <a key={r.value} className="button-primary text-center" href={buildPublicShareUrl('booking', undefined, { query: { region: r.value } })}>{r.label}</a>
                         ))}
                     </div>
@@ -953,6 +959,21 @@ Mohon konfirmasi untuk langkah selanjutnya. Terima kasih! 🙏`;
                     </div>
                     <div className="text-center mb-6 md:mb-8">
                         <h1 className="text-2xl md:text-3xl font-bold text-gradient">{userProfile.companyName}</h1>
+                    </div>
+
+                    <div className="mb-5 flex flex-wrap justify-center gap-2">
+                        {regionOptions.map(region => {
+                            const isActive = normalizePublicBookingRegion(selectedRegion) === region.value;
+                            return (
+                                <a
+                                    key={region.value}
+                                    href={buildPublicShareUrl('booking', undefined, { query: { region: region.value } })}
+                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${isActive ? 'bg-black text-white' : 'border border-public-border bg-white text-public-text-primary hover:border-black'}`}
+                                >
+                                    {region.label}
+                                </a>
+                            );
+                        })}
                     </div>
 
                     <form className="public-booking-form space-y-5" onSubmit={handleSubmit}>

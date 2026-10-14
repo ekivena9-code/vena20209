@@ -5,6 +5,7 @@ import Modal from '../../../shared/ui/Modal';
 import { UploadIcon, TrashIcon, LinkIcon, MapPinIcon, PlusIcon, FileTextIcon, CameraIcon } from '../../../constants';
 import { createGallery, listGalleries, uploadGalleryImages, deleteGallery, updateGallery, uploadCoverImage, uploadGalleryPdf, deleteGalleryImage, reorderGalleryImages } from '../../../services/galleries';
 import { getGalleryPublicRouteId } from '../../../utils/publicRouting';
+import { useSupabaseRealtimeRefresh } from '../../../hooks/useSupabaseRealtimeRefresh';
 
 interface GalleryUploadProps {
     userProfile: Profile;
@@ -168,6 +169,8 @@ const GalleryUpload: React.FC<GalleryUploadProps> = ({ userProfile, showNotifica
             setIsLoading(false);
         }
     };
+
+    useSupabaseRealtimeRefresh('dashboard-galleries', ['galleries'], loadGalleries);
 
     const validateDraftImageFiles = (files: File[]) => files.filter(file => {
         if (file.size > 10 * 1024 * 1024) {
